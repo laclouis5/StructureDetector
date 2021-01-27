@@ -24,3 +24,6 @@ Install python packages:
 pip install -U pip
 pip install -r requirements.txt
 ```
+
+# Contact
+Feel free to ask you questions or request data at louis.lac@ims-bordeaux.fr.
