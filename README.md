@@ -76,6 +76,8 @@ You should also update the `label.json` file with the names of your labels and p
 }
 ```
 
+For annotating crops you can use [this repo](https://github.com/laclouis5/StructureAnnotator) or adapt it to your needs.
+
 ## Training
 Split your dataset into two folders: one for training and the other for validation. Optionnaly launch TensorBoard to monitor training (use a secondary shell):
 ```zsh
