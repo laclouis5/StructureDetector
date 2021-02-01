@@ -8,8 +8,8 @@ class Arguments:
     def __init__(self):
         parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
-        parser.add_argument("train_dir", type=str, help="The training directory.")
-        parser.add_argument("valid_dir", type=str, help="The validation directory.")
+        parser.add_argument("--train_dir", type=str, help="The training directory.")
+        parser.add_argument("--valid_dir", type=str, help="The validation directory.")
 
         parser.add_argument("--labels", "-m", type=str, default="labels.json",
             help="Json file of anchor and part names. See 'labels.json' for an example.")

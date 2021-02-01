@@ -7,7 +7,7 @@ Structure Detector is a pose estimation network which can detect an arbitrary nu
 # Installation
 
 Requirements:
-- Python3
+- Python > 3.8
 - Nvidia GPU with CUDA/CUDNN installed (recommended)
 
 We recommend using a virtual environment:

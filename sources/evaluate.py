@@ -6,6 +6,7 @@ from tqdm import tqdm
 
 
 args = Arguments().parse()
+assert args.valid_dir, "Path to a directory with validation samples must be specified."
 assert args.pretrained_model, "No pretrained model specified. Use the option '--load_model <model_path>'."
 
 evaluator = Evaluator(args)
