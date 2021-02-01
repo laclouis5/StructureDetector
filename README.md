@@ -27,7 +27,7 @@ Put the validation dataset in `database/valid/` at the root directory of the rep
 Execute this command:
 
 ```zsh
-python sources/evaluate.py --valid_dir database/valid/ --load_model model_best_classif.pth --conf_threshold 0.529 --decoder_dist_thresh 0.108
+python sources/evaluate.py --valid_dir database/valid/ --load_model model_best_classif.pth --anchor_name stem --conf_threshold 0.529 --decoder_dist_thresh 0.108
 ```
 
 # Train your own Model
