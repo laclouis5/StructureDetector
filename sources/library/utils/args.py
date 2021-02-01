@@ -13,7 +13,7 @@ class Arguments:
 
         parser.add_argument("--labels", "-m", type=str, default="labels.json",
             help="Json file of anchor and part names. See 'labels.json' for an example.")
-        parser.add_argument("--anchor_name", "-s", type=str, default="stem",
+        parser.add_argument("--anchor_name", "-s", type=str, default="anchor",
             help="Name of the keypoint representing the anchor of the object.")
         parser.add_argument("--width", "-W", default=512, type=int,
             help="The network input width.")
@@ -53,11 +53,11 @@ class Arguments:
         parser.add_argument("--sigma_gauss", type=float, default=5/100,
             help="Size of the gaussian filter used to lay keypoints on heatmaps. Expressed in percent of the image side length.")
 
-        parser.add_argument("--conf_threshold", "-t", type=float, default=52.9/100,
+        parser.add_argument("--conf_threshold", "-t", type=float, default=33/100,
             help="Confidence threshold for keypoint detection. Must be in [0, 1].")
         parser.add_argument("--dist_threshold", "-d", type=float, default=4/100,
             help="Radius in percent of min image length considered for evaluation. Must be in [0, 1].")
-        parser.add_argument("--decoder_dist_thresh", type=float, default=10.8/100,
+        parser.add_argument("--decoder_dist_thresh", type=float, default=5/100,
             help="Radius in percent of min image length considered for keypoint linkage. Must be in [0, 1].")
         parser.add_argument("--csi_threshold", type=float, default=75/100,
             help="Threshold on the custom CSI metric for evaluation. Must be in [0, 1].")
