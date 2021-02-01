@@ -111,6 +111,7 @@ class Arguments:
         args.parts = parts
         args.use_cuda = True if torch.cuda.is_available() else False
         args.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        args.num_workers = 8 if args.use_cuda else 0
 
         if torch.backends.cudnn.is_available():
             torch.backends.cudnn.benchmark = True

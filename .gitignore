@@ -1,6 +1,7 @@
 # Custom
 database/
 trainings/
+runs/
 .DS_Store
 .vscode/
 

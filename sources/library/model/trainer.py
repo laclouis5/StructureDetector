@@ -29,8 +29,13 @@ class Trainer:
         self.best_csi = 0.0
         self.best_classif = 0.0
 
+        # TODO: Test this.
+        if args.pretrained_model:
+            self.net.load_state_dict(torch.load(args.pretrained_model, map_location=args.device))
+
         if torch.cuda.device_count() > 1:
             self.net = nn.DataParallel(self.net)
+
         self.net.to(args.device)
         self.loss.to(args.device)
 
@@ -43,13 +48,13 @@ class Trainer:
         self.train_dataloader = data.DataLoader(self.train_set,
             batch_size=args.batch_size, collate_fn=CropDataset.collate_fn, shuffle=True,
             pin_memory=args.use_cuda,
-            num_workers=8 if args.use_cuda else 0,
+            num_workers=args.num_workers,
             drop_last=True)
 
         self.valid_dataloader = data.DataLoader(self.valid_set,
             batch_size=1, collate_fn=CropDataset.collate_fn, shuffle=True,
             pin_memory=args.use_cuda,
-            num_workers=8 if args.use_cuda else 0)
+            num_workers=args.num_workers)
 
         # Logging
         now = datetime.now()
@@ -57,9 +62,6 @@ class Trainer:
         self.save_dir = os.path.join("trainings/", date_str)
         mkdir_if_needed("trainings/")
         mkdir_if_needed(self.save_dir)
-        config = {arg: str(self.args.__getattribute__(arg)) for arg in self.args.__dict__}
-        with open(os.path.join(self.save_dir, "args.json"), "w") as f:
-            f.write(json.dumps(config, indent=2))
 
     def train(self):
         for epoch in tqdm(range(self.args.epochs), desc="Training", unit="epoch"):

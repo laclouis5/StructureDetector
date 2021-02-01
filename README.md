@@ -8,9 +8,9 @@ Structure Detector is a pose estimation network which can detect an arbitrary nu
 
 Requirements:
 - Python3
-- A Nvidia GPU with CUDA/CUDNN installed
+- Nvidia GPU with CUDA/CUDNN installed (recommended)
 
-We recommand using a virtual environment:
+We recommend using a virtual environment:
 
 ```zsh
 cd StructureDetector
@@ -18,7 +18,7 @@ python3 -m venv env
 source env/bin/activate
 ```
 
-Install python packages:
+Install required Python packages:
 
 ```zsh
 pip install -U pip
