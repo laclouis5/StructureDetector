@@ -34,11 +34,9 @@ class Loss(nn.Module):
             input["embeddings"], target["embeddings"],
             target["part_inds"], target["part_mask"])
 
-        loss = hm_loss + offset_loss + embeddings_loss
-
         self.stats.update(hm_loss.item(), offset_loss.item(), embeddings_loss.item())
 
-        return loss
+        return hm_loss + offset_loss + embeddings_loss
 
 
 class L1Loss(nn.Module):
@@ -51,8 +49,7 @@ class L1Loss(nn.Module):
         preds = transpose_and_gather(input, inds)  # (B, K, 2)
         mask = mask.unsqueeze(2).expand_as(preds).float()  # (B, K, 2)
         loss = F.l1_loss(preds * mask, target * mask, reduction="sum")  # (1)
-        loss = loss / (mask.sum() + 1e-7)  # (1)
-        return loss  # (1)
+        return loss / (mask.sum() + 1e-7)  # (1)
 
 
 class SmoothL1Loss(nn.Module):
@@ -65,8 +62,7 @@ class SmoothL1Loss(nn.Module):
         preds = transpose_and_gather(input, inds)  # (B, K, 2)
         mask = mask.unsqueeze(2).expand_as(preds).float()  # (B, K, 2)
         loss = F.smooth_l1_loss(preds * mask, target * mask, reduction="sum")  # (1)
-        loss = loss / (mask.sum() + 1e-7)  # (1)
-        return loss  # (1)
+        return loss / (mask.sum() + 1e-7)  # (1)
 
 
 class L2Loss(nn.Module):
@@ -79,8 +75,7 @@ class L2Loss(nn.Module):
         preds = transpose_and_gather(input, inds)  # (B, K, 2)
         mask = mask.unsqueeze(2).expand_as(preds).float()  # (B, K, 2)
         loss = F.mse_loss(preds * mask, target * mask, reduction="sum")  # (1)
-        loss = loss / (mask.sum() + 1e-7)  # (1)
-        return loss # (1)
+        return loss / (mask.sum() + 1e-7)  # (1)
 
 
 class FocalLoss(nn.Module):
@@ -105,10 +100,10 @@ class FocalLoss(nn.Module):
 
         if num_pos == 0:
             return -neg_loss  # (1)
-        else:
-            pos_loss = torch.log(input) * torch.pow(one_minus_input, 2) * pos_inds  # (B, N, H, W)
-            pos_loss = pos_loss.sum()  # (1)
-            return -(pos_loss + neg_loss) / num_pos  # (1)
+
+        pos_loss = torch.log(input) * torch.pow(one_minus_input, 2) * pos_inds  # (B, N, H, W)
+        pos_loss = pos_loss.sum()  # (1)
+        return -(pos_loss + neg_loss) / num_pos  # (1)
 
 
 class LossStats:

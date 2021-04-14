@@ -94,22 +94,20 @@ class Arguments:
         name_list = json.load(open(args.labels, "r"))
 
         if isinstance(name_list["labels"], dict):
-            labels = name_list["labels"]
+            args.labels = name_list["labels"]
         elif isinstance(name_list["labels"], list):
-            labels = {value: i for (i, value) in enumerate(name_list["labels"])}
+            args.labels = {value: i for (i, value) in enumerate(name_list["labels"])}
         else:
-            labels = {name_list["labels"]: 0}
+            args.labels = {name_list["labels"]: 0}
 
         if isinstance(name_list["parts"], dict):
-            parts = name_list["parts"]
+            args.parts = name_list["parts"]
         elif isinstance(name_list["parts"], list):
-            parts = {value: i for (i, value) in enumerate(name_list["parts"])}
+            args.parts = {value: i for (i, value) in enumerate(name_list["parts"])}
         else:
-            parts = {name_list["parts"]: 0}
+            args.parts = {name_list["parts"]: 0}
 
-        args.labels = labels
-        args.parts = parts
-        args.use_cuda = True if torch.cuda.is_available() else False
+        args.use_cuda = torch.cuda.is_available()
         args.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         args.num_workers = 8 if args.use_cuda else 0
 

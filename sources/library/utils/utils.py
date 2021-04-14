@@ -23,7 +23,7 @@ class Keypoint:
         self.x = self.x / img_w * new_w
         self.y = self.y / img_h * new_h
 
-        return self    
+        return self
 
     def resized(self, in_size, out_size):
         return copy.deepcopy(self).resize(in_size, out_size)
@@ -131,7 +131,7 @@ class Object:
     def __init__(self, name, anchor, parts=None, box=None):
         self.name = name
         self.anchor = anchor
-        self.parts = parts if parts else []
+        self.parts = parts or []
         self.box = box
 
     @property
@@ -216,7 +216,7 @@ class ImageAnnotation:
 
     def __init__(self, image_path, objects=None, img_size=None):
         self.image_path = image_path
-        self.objects = objects if objects else []
+        self.objects = objects or []
         self.img_size = img_size
 
     @property
@@ -224,12 +224,12 @@ class ImageAnnotation:
         return os.path.basename(self.image_path)
 
     def normalize(self, size=None):
-        size = size if size else self.img_size
+        size = size or self.img_size
         assert size, f"Annotation for '{self.image_path}' does not have a size."
 
         for obj in self.objects:
             obj.normalize(size)
-            
+
         return self
         
     def normalized(self, size=None):
@@ -237,21 +237,22 @@ class ImageAnnotation:
 
     @staticmethod
     def from_json(file, anchor_name):
-        with open(file, "r") as f:
-            data = json.load(f)
-            image_path = data["image_path"]
-            img_size = data.get("img_size", None)
-            objects = [Object.from_json(obj, anchor_name) for obj in data["objects"]]
+        data = json.load(open(file))
+        image_path = data["image_path"]
+        img_size = data.get("img_size", None)
+        objects = [Object.from_json(obj, anchor_name) for obj in data["objects"]]
 
-            return ImageAnnotation(image_path, objects, img_size)
+        return ImageAnnotation(image_path, objects, img_size)
 
     def json_repr(self):
-        objects = [obj.json_repr() for obj in self.objects]
-        repr = {"image_path": self.image_path, "img_size": self.img_size, "objects": objects}
-        return repr
+        return {
+            "image_path": self.image_path,
+            "img_size": self.img_size,
+            "objects": [obj.json_repr() for obj in self.objects],
+        }
 
     def save_json(self, save_dir=None):
-        save_dir = save_dir if save_dir else "detections/"
+        save_dir = save_dir or "detections/"
         mkdir_if_needed(save_dir)
         save_name = os.path.splitext(self.image_name)[0] + ".json"
         save_name = os.path.join(save_dir, save_name)
@@ -270,10 +271,7 @@ class ImageAnnotation:
 
     @property
     def nb_parts(self):
-        count = 0
-        for obj in self.objects:
-            count += obj.nb_parts
-        return count
+        return sum(obj.nb_parts for obj in self.objects)
 
     def resize(self, in_size, out_size):
         for obj in self.objects:
@@ -342,8 +340,7 @@ def set_seed(seed):
 # feat: (B, J, C), ind: (B, N)
 def gather(feat, ind):
     ind = ind.unsqueeze(-1).expand(-1, -1, feat.size(2))  #  (B, N, C)
-    feat = feat.gather(1, ind) # (B, N, C)
-    return feat  # (B, N, C)
+    return feat.gather(1, ind) # (B, N, C)
 
 
 # feat: (B, C, H, W), ind: (B, N)
@@ -351,15 +348,13 @@ def transpose_and_gather(feat, ind):
     ind = ind.unsqueeze(1).expand(-1, feat.size(1), -1)  # (B, C, N)
     feat = feat.view(feat.size(0), feat.size(1), -1)  # (B, C, J = H * W)
     feat = feat.gather(2, ind)  # (B, C, N)
-    feat = feat.permute(0, 2, 1)  # (B, N, C)
-    return feat  # (B, N, C)
+    return feat.permute(0, 2, 1)  # (B, N, C)
 
 
 # input: Tensor
 def clamped_sigmoid(input):
     output = torch.sigmoid(input)
-    output = clamp_in_0_1(output)
-    return output
+    return clamp_in_0_1(output)
 
 
 def clamp_in_0_1(tensor):

@@ -201,7 +201,7 @@ class Encode:
 
             if kp_idx == self.max_parts: break
 
-        output = {
+        return {
             "image": input,
             "anchor_hm": heatmaps[:len(self.labels), :, :],
             "part_hm": heatmaps[len(self.labels):, :, :],
@@ -210,8 +210,6 @@ class Encode:
             "embeddings": embeddings,
             "anchor_mask": anchor_mask, "part_mask": part_mask,
             "annotation": target}
-
-        return output
 
     def __repr__(self):
         return f"Encode(max_objects: {self.max_objects}, max_parts: {self.max_parts}, down_ratio: {self.down_ratio}, nb_labels: {len(self.labels)}, nb_parts: {len(self.parts)})"

@@ -89,9 +89,7 @@ class Trainer:
             self.global_step += self.args.batch_size
 
         self.writer.add_scalar("Learning rate", self.optimizer.param_groups[0]["lr"], self.global_step)
-
         self.scheduler.step()
-
         self.train_set.transform.trigger_random_resize()
 
     def valid(self):

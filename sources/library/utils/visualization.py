@@ -4,6 +4,7 @@ import numpy.random as random
 import torchvision.transforms.functional as F
 import torch
 
+
 def get_random_color_map(count, seed=None):
     if seed: random.seed(seed)
     return random.randint(0, 256, (count, 3))
@@ -13,9 +14,7 @@ def un_normalize(tensor):  # (B, 3, H, W)
     # (3, 1, 1)
     mean = torch.tensor([0.485, 0.456, 0.406], device=tensor.device).unsqueeze(-1).unsqueeze(-1)
     std = torch.tensor([0.229, 0.224, 0.225], device=tensor.device).unsqueeze(-1).unsqueeze(-1)
-    output = tensor * std + mean
-
-    return output
+    return tensor * std + mean
 
 
 def draw(image, annotation, args, unnorm_image=True):

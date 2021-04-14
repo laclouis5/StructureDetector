@@ -7,6 +7,7 @@ from collections import defaultdict
 import numpy as np
 import os
 
+
 class CropDataset(data.Dataset):
 
     def __init__(self, args, directories, transforms=None):

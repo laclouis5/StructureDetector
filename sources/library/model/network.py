@@ -42,9 +42,7 @@ class Network(nn.Module):
 
         resnet = torchvision.models.resnet34(pretrained=pretrained)
 
-        self.adpater = nn.Sequential(
-            resnet.conv1, resnet.bn1, resnet.relu, resnet.maxpool
-        )  # /4
+        self.adpater = nn.Sequential(resnet.conv1, resnet.bn1, resnet.relu, resnet.maxpool)  # /4
 
         self.down1 = resnet.layer1  # /1 -> /4
         self.down2 = resnet.layer2  # /2 -> /8
@@ -75,14 +73,11 @@ class Network(nn.Module):
 
         nb_hm = self.label_count + self.part_count  # M+N
 
-        output = {  # R = 4
+        return {  # R = 4
             "anchor_hm": out[:, :self.label_count, ...],  # (B, M, H/R, W/R)
             "part_hm": out[:, self.label_count:nb_hm, ...],  # (B, N, H/R, W/R)
             "offsets": out[:, nb_hm:(nb_hm + 2), ...],  # (B, 2, H/R, W/R)
-            "embeddings": out[:, (nb_hm + 2):(nb_hm + 4), ...]  # (B, 2, H/R, W/R)
-        }
-
-        return output
+            "embeddings": out[:, (nb_hm + 2):(nb_hm + 4), ...]}  # (B, 2, H/R, W/R)
 
     def save(self, path="last_model.pth"):
         torch.save(self.state_dict(), path)
