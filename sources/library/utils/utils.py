@@ -1,4 +1,3 @@
-import os
 import copy
 import json
 import random
@@ -6,7 +5,7 @@ import torch
 import numpy as np
 import torch.nn as nn
 from collections import defaultdict
-
+from pathlib import Path
 
 class Keypoint:
 
@@ -29,7 +28,7 @@ class Keypoint:
         return copy.deepcopy(self).resize(in_size, out_size)
 
     def distance(self, other):
-        return np.sqrt((self.x - other.x)**2 + (self.y - other.y)**2)
+        return np.hypot(self.x - other.x, self.y - other.y)
 
     def normalize(self, size):
         self.x = self.x / size[0]
@@ -215,13 +214,13 @@ class Object:
 class ImageAnnotation:
 
     def __init__(self, image_path, objects=None, img_size=None):
-        self.image_path = image_path
+        self.image_path = Path(image_path)
         self.objects = objects or []
         self.img_size = img_size
 
     @property
     def image_name(self):
-        return os.path.basename(self.image_path)
+        return image_path.name
 
     def normalize(self, size=None):
         size = size or self.img_size
@@ -238,7 +237,7 @@ class ImageAnnotation:
     @staticmethod
     def from_json(file, anchor_name):
         data = json.load(open(file))
-        image_path = data["image_path"]
+        image_path = Path(data["image_path"])
         img_size = data.get("img_size", None)
         objects = [Object.from_json(obj, anchor_name) for obj in data["objects"]]
 
@@ -246,25 +245,19 @@ class ImageAnnotation:
 
     def json_repr(self):
         return {
-            "image_path": self.image_path,
+            "image_path": str(self.image_path),
             "img_size": self.img_size,
             "objects": [obj.json_repr() for obj in self.objects],
         }
 
     def save_json(self, save_dir=None):
-        save_dir = save_dir or "detections/"
+        save_dir = Path(save_dir or "detections/")
         mkdir_if_needed(save_dir)
-        save_name = os.path.splitext(self.image_name)[0] + ".json"
-        save_name = os.path.join(save_dir, save_name)
-
-        repr = self.json_repr()
-        data = json.dumps(repr, indent=2)
-        with open(save_name, "w") as f:
-            f.write(data)
+        save_name = save_dir / self.image_path.with_suffix(".json").name
+        save_name.write_text(json.dumps(self.json_repr(), indent=2))
 
     def __repr__(self):
-        name = os.path.basename(self.image_path)
-        return f"ImageAnnotation(name: {name}, objects: {self.objects}, img_size: {self.img_size})"
+        return f"ImageAnnotation(name: {self.image_name}, objects: {self.objects}, img_size: {self.img_size})"
 
     def __len__(self):
         return len(self.objects)
@@ -305,29 +298,11 @@ class AverageMeter:
 
 
 def files_with_extension(folder, extension):
-    return [os.path.join(folder, file)
-        for file in os.listdir(folder)
-        if os.path.splitext(file)[1] == extension]
-
-
-def change_extension(file, extension):
-    return os.path.splitext(file)[0] + extension
-
-
-def change_path(file, path):
-    return os.path.join(path, os.path.basename(file))
+    return [f for f in Path(folder).iterdir() if f.suffix == extension]
 
 
 def mkdir_if_needed(directory):
-    if not os.path.isdir(directory):
-        os.mkdir(directory)
-
-
-def save(content, file_name):
-    mkdir_if_needed(os.path.split(file_name)[0])
-
-    with open(file_name, "w") as f:
-        f.write(content)
+    Path(directory).mkdir(exist_ok=True)
 
 
 def set_seed(seed):

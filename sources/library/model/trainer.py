@@ -10,7 +10,7 @@ import torch.utils.data as data
 from torch.utils.tensorboard import SummaryWriter
 from tqdm import tqdm
 from datetime import datetime
-import os
+from pathlib import Path
 
 
 class Trainer:
@@ -56,9 +56,7 @@ class Trainer:
             num_workers=args.num_workers)
 
         # Logging
-        now = datetime.now()
-        date_str = f"{now:%Y-%m-%d_%H-%M-%s}"
-        self.save_dir = os.path.join("trainings/", date_str)
+        self.save_dir = Path("trainings") / f"{datetime.now():%Y-%m-%d_%H-%M-%s}"
         mkdir_if_needed("trainings/")
         mkdir_if_needed(self.save_dir)
 

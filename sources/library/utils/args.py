@@ -1,7 +1,7 @@
 import argparse
 import json
 import torch
-
+from pathlib import Path
 
 class Arguments:
 
@@ -91,7 +91,7 @@ class Arguments:
 
         args.lr_step = int(args.epochs / args.lr_step) if args.lr_step != 0 else args.epochs
 
-        name_list = json.load(open(args.labels, "r"))
+        name_list = json.load(open(args.labels))
 
         if isinstance(name_list["labels"], dict):
             args.labels = name_list["labels"]
