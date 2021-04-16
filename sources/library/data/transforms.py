@@ -234,7 +234,7 @@ class TrainAugmentation:
         if self.args.no_augmentation:
             return
 
-        resize_ratio = self.ratios[torch.randint(len(self.ratios)).item()]
+        resize_ratio = self.ratios[torch.randint(len(self.ratios), (1,)).item()]
         width = int(resize_ratio * self.args.width)
         height = int(resize_ratio * self.args.height)
         self.transform.transforms[0] = Resize((width, height))

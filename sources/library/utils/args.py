@@ -2,6 +2,8 @@ import argparse
 import json
 import torch
 from pathlib import Path
+from .utils import get_unique_color_map
+
 
 class Arguments:
 
@@ -116,5 +118,11 @@ class Arguments:
 
         if args.hm_loss_fn.lower() not in {"focal", "mse"}:
             raise IOError(f"'hm_loss_fn' should either be 'focal' or 'mse', not {args.hm_loss_fn}.")
+
+        args._r_labels = {v: k for k, v in args.labels.items()}
+        args._r_parts = {v: k for k, v in args.parts.items()}
+        args._label_color_map = get_unique_color_map(args.labels)
+        args._part_color_map = get_unique_color_map(args.parts)
+        
 
         return args

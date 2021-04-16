@@ -8,8 +8,8 @@ import numpy as np
 class Decoder:
 
     def __init__(self, args):
-        self.label_map = {value: key for (key, value) in args.labels.items()}  # M
-        self.part_map = {value: key for (key, value) in args.parts.items()}  # N
+        self.label_map = args._r_labels
+        self.part_map = args._r_parts
         self.anchor_name = args.anchor_name
 
         self.args = args

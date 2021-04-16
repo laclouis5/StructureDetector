@@ -1,13 +1,7 @@
 from .utils import *
 from PIL import Image, ImageDraw
-import numpy.random as random
 import torchvision.transforms.functional as F
 import torch
-
-
-def get_random_color_map(count, seed=None):
-    if seed: random.seed(seed)
-    return random.randint(0, 256, (count, 3))
 
 
 def un_normalize(tensor):  # (B, 3, H, W)
@@ -29,19 +23,13 @@ def draw(image, annotation, args, unnorm_image=True):
     offset = int(min(img_w, img_h) * 1/100)
     thickness = int(min(img_w, img_h) * 1/100)
 
-    object_cmap = get_random_color_map(len(args.labels), 7567)
-    part_cmap = get_random_color_map(len(args.parts), 9456)
-
-    object_cmap = {label: (*color,) for (label, color) in zip(args.labels.keys(), object_cmap)}
-    part_cmap = {part: (*color,) for (part, color) in zip(args.parts.keys(), part_cmap)}
-
     for obj in annotation.objects:
-        obj_color = object_cmap[obj.name]
+        obj_color = args._label_color_map[obj.name]
 
         (x, y) = (obj.x, obj.y)
 
         for kp in obj.parts:
-            kp_color = part_cmap[kp.kind]
+            kp_color = args._part_color_map[kp.kind]
 
             draw.ellipse([kp.x - offset, kp.y - offset, kp.x + offset, kp.y + offset],
                 fill=kp_color, outline=kp_color)
@@ -61,13 +49,14 @@ def draw(image, annotation, args, unnorm_image=True):
 def draw_heatmaps(anchor_hm, part_hm, args):
     assert anchor_hm.dim() == 3 and part_hm.dim() == 3, "Do not send batched data to this function, only one sample"
 
-    (h, w) = anchor_hm.shape[1:]
+    (c1, h, w) = anchor_hm.shape
+    c2 = part_hm.shape[0]
 
-    object_cmap = get_random_color_map(len(args.labels), 7567)
-    part_cmap = get_random_color_map(len(args.parts), 9456)
+    # obj_colors = torch.tensor(list(get_unique_color_map(args.labels).values()), device=anchor_hm.device)
+    # part_colors = torch.tensor(list(get_unique_color_map(args.parts).values()), device=anchor_hm.device)
+    obj_colors = torch.tensor([args._label_color_map.get(args._r_labels.get(i, None), (0, 0, 0)) for i in range(c1)], device=anchor_hm.device)
+    part_colors = torch.tensor([args._part_color_map.get(args._r_parts.get(i, None), (0, 0, 0)) for i in range(c2)], device=part_hm.device)
 
-    obj_colors = torch.from_numpy(object_cmap).to(anchor_hm.device)
-    part_colors = torch.from_numpy(part_cmap).to(anchor_hm.device)
     obj_colors = obj_colors.unsqueeze(-1).unsqueeze(-1).expand(-1, -1, h, w)
     part_colors = part_colors.unsqueeze(-1).unsqueeze(-1).expand(-1, -1, h, w)
 
@@ -95,15 +84,12 @@ def draw_kp_and_emb(image, topk_obj, topk_kp, embeddings, args):
     offset = int(min(img_w, img_h) * 1/100)
     thickness = int(min(img_w, img_h) * 1/100)
 
-    object_cmap = get_random_color_map(len(args.labels), 7567)
-    part_cmap = get_random_color_map(len(args.parts), 9456)
-
     (obj_scores, _, obj_labels, obj_ys, obj_xs) = topk_obj
     (part_scores, _, part_labels, part_ys, part_xs) = topk_kp
 
     for (x, y, label, score) in zip(obj_xs.squeeze(0), obj_ys.squeeze(0), obj_labels.squeeze(0), obj_scores.squeeze(0)):
         if score < thresh: continue
-        color = (*object_cmap[label],)
+        color = args._label_color_map[args._r_labels[label.item()]]
 
         x *= args.down_ratio
         y *= args.down_ratio
@@ -113,7 +99,7 @@ def draw_kp_and_emb(image, topk_obj, topk_kp, embeddings, args):
 
     for (x, y, label, score, embeddings) in zip(part_xs.squeeze(0), part_ys.squeeze(0), part_labels.squeeze(0), part_scores.squeeze(0), embeddings.squeeze(0)):
         if score < thresh: continue
-        color = (*part_cmap[label],)
+        color = args._part_color_map[args._r_parts[label.item()]]
 
         x *= args.down_ratio
         y *= args.down_ratio

@@ -35,7 +35,7 @@ class Trainer:
 
         if torch.cuda.device_count() > 1:
             self.net = nn.DataParallel(self.net)
-            
+
         self.net.to(args.device)
         self.loss.to(args.device)
 
@@ -139,13 +139,13 @@ class Trainer:
         # Save best network
         if loss_stats.total_loss < self.best_loss:
             self.best_loss = loss_stats.total_loss
-            self.net.save(os.path.join(self.save_dir, "model_best_loss.pth"))
+            self.net.save(self.save_dir / "model_best_loss.pth")
         if f1_csi["total"] > self.best_csi:
             self.best_csi = f1_csi["total"]
-            self.net.save(os.path.join(self.save_dir, "model_best_csi.pth"))
+            self.net.save(self.save_dir / "model_best_csi.pth")
         if f1_classif["total"] > self.best_classif:
             self.best_classif = f1_classif["total"]
-            self.net.save(os.path.join(self.save_dir, "model_best_classif.pth"))
+            self.net.save(self.save_dir / "model_best_classif.pth")
 
         # Draw metrics to Tensorboard
         self.writer.add_scalars("Loss/Validation", loss_stats.__dict__, self.global_step)

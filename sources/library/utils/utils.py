@@ -6,6 +6,7 @@ import numpy as np
 import torch.nn as nn
 from collections import defaultdict
 from pathlib import Path
+from xxhash import xxh64_digest
 
 
 class Keypoint:
@@ -450,3 +451,7 @@ def dict_grouping(iterable, key):
     for element in iterable:
         output[key(element)].append(element)
     return output
+
+
+def get_unique_color_map(labels):
+    return {n: (*xxh64_digest(n.encode())[:3],) for n in labels}
