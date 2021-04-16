@@ -7,6 +7,7 @@ import torch.nn as nn
 from collections import defaultdict
 from pathlib import Path
 
+
 class Keypoint:
 
     def __init__(self, kind, x, y, score=None):
@@ -411,8 +412,8 @@ def resize_annotation(annotation, img_size, new_size):
     return annotation
 
 
-def gaussian_2d(mu1, mu2, sigma):
-    return lambda x, y: np.exp((-(x - mu1)**2 - (y - mu2)**2) / (2 * sigma**2))
+def gaussian_2d(X, Y, mu1, mu2, sigma):
+    return torch.exp((-(X - mu1)**2 - (Y - mu2)**2) / (2 * sigma**2))
 
 
 # heatmaps: (B, C, H, W)

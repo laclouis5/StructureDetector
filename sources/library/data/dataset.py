@@ -4,8 +4,6 @@ import torch.utils.data as data
 from PIL import Image
 from .transforms import Compose
 from collections import defaultdict
-import numpy as np
-import os
 
 
 class CropDataset(data.Dataset):
@@ -45,9 +43,8 @@ class CropDataset(data.Dataset):
     def localize_image_names(self):
         for file in self.files:
             annotation = ImageAnnotation.from_json(file, self.args.anchor_name)
-            image_path = os.path.join(os.path.split(file)[0], annotation.image_name)
-            annotation.image_path = image_path
-            annotation.save_json(os.path.split(file)[0])
+            annotation.image_path = file.parent / annotation.image_name
+            annotation.save_json(file.parent)
 
     @staticmethod
     def collate_fn(elements):

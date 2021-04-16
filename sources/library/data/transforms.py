@@ -2,9 +2,7 @@ from ..utils import *
 import torchvision.transforms as torchtf
 import torchvision.transforms.functional as F
 import PIL
-import random
 import torch
-import numpy as np
 
 
 class RandomHorizontalFlip:
@@ -13,7 +11,7 @@ class RandomHorizontalFlip:
         self.prob = prob
 
     def __call__(self, input, target):
-        if random.random() < self.prob:
+        if torch.randn(1).item() < self.prob:
             return (F.hflip(input), hflip_annotation(target, input.size))
         else:
             return (input, target)
@@ -28,7 +26,7 @@ class RandomVerticalFlip:
         self.prob = prob
 
     def __call__(self, input, target):
-        if random.random() < self.prob:
+        if torch.randn(1).item() < self.prob:
             return (F.vflip(input), vflip_annotation(target, input.size))
         else:
             return (input, target)
@@ -93,7 +91,7 @@ class RandomResize:
         self.height = args.height
 
     def __call__(self, input, target):
-        ratio = np.random.choice(self.ratios, 1)
+        ratio = self.ratios[torch.randint(len(self.ratios), (1,)).item()]
         width, height = int(ratio * self.width), int(ratio * self.height)
         image = F.resize(input, (height, width))
         annotation = target.resize(input.size, (width, height))
@@ -151,7 +149,7 @@ class Encode:
         kp_idx = 0
 
         sigma = self.sigma_gauss * min(out_w, out_h) / 3
-        (X, Y) = np.meshgrid(np.arange(0, out_w), np.arange(0, out_h))
+        (Y, X) = torch.meshgrid(torch.arange(out_h), torch.arange(out_w))
 
         heatmaps = torch.zeros(len(self.labels) + len(self.parts), out_h, out_w)
         anchor_inds = torch.zeros(self.max_objects, dtype=torch.long)
@@ -168,8 +166,7 @@ class Encode:
         for obj_idx, obj in enumerate(resized_target.objects[:self.max_objects]):
             label_index = self.labels[obj.name]
 
-            anchor_hm = gaussian_2d(int(obj.x), int(obj.y), sigma)
-            anchor_hm = torch.from_numpy(anchor_hm(X, Y)).type(torch.float32)
+            anchor_hm = gaussian_2d(X, Y, int(obj.x), int(obj.y), sigma)
             heatmaps[label_index] = torch.max(heatmaps[label_index], anchor_hm)
 
             anchor_inds[obj_idx] = int(obj.y)*out_w + int(obj.x)
@@ -182,8 +179,7 @@ class Encode:
             for kp in obj.parts:
                 kind_index = self.parts[kp.kind] + len(self.labels)  # index in whole HM
 
-                part_hm = gaussian_2d(int(kp.x), int(kp.y), sigma)
-                part_hm = torch.from_numpy(part_hm(X, Y)).type(torch.float32)
+                part_hm = gaussian_2d(X, Y, int(kp.x), int(kp.y), sigma)
                 heatmaps[kind_index] = torch.max(heatmaps[kind_index], part_hm)
 
                 parts_inds[kp_idx] = int(kp.y)*out_w + int(kp.x)
@@ -217,6 +213,8 @@ class Encode:
 
 class TrainAugmentation:
 
+    ratios = (0.75, 0.8125, 0.875, 0.9375, 1, 1.0625, 1.125, 1.1875, 1.25)
+
     def __init__(self, args):
         self.args = args
         self.transform = Compose([
@@ -236,8 +234,7 @@ class TrainAugmentation:
         if self.args.no_augmentation:
             return
 
-        np.random.seed()
-        resize_ratio = np.random.choice((0.75, 0.8125, 0.875, 0.9375, 1, 1.0625, 1.125, 1.1875, 1.25))
+        resize_ratio = self.ratios[torch.randint(len(self.ratios)).item()]
         width = int(resize_ratio * self.args.width)
         height = int(resize_ratio * self.args.height)
         self.transform.transforms[0] = Resize((width, height))

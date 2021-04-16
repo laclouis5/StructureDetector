@@ -35,7 +35,7 @@ class Trainer:
 
         if torch.cuda.device_count() > 1:
             self.net = nn.DataParallel(self.net)
-
+            
         self.net.to(args.device)
         self.loss.to(args.device)
 
