@@ -55,9 +55,8 @@ class Evaluation:
 
     @property
     def f1_score(self):
-        p, r = self.precision, self.recall
-        s = p + r
-        return 2 * p * r / s if s != 0 else 0
+        s = self.npos + self.ndet
+        return 2 * self.tp / s if s != 0 else 1
 
     @property
     def avg_acc(self):
