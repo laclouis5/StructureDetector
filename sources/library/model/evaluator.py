@@ -42,39 +42,22 @@ class Evaluation:
 
     @property
     def csi(self):
-        if self.tp + self.fp + self.fn == 0:
-            return 1.0
         denominator = self.npos + self.ndet - self.tp
-        return self.tp / denominator
+        return self.tp / denominator if denominator != 0 else 1
 
     @property
     def precision(self):
-        if self.tp + self.fp + self.fn == 0:
-            return 1.0
-        if self.tp == 0 and (self.fp > 0 or self.fn > 0):
-            return 0.0
-        return self.tp / self.ndet
+        return self.tp / self.ndet if self.ndet != 0 else 1 if self.npos == 0 else 0
 
     @property
     def recall(self):
-        if self.tp + self.fp + self.fn == 0:
-            return 1.0
-        if self.tp == 0 and (self.fp > 0 or self.fn > 0):
-            return 0.0
-        return self.tp / self.npos
+        return self.tp / self.npos if self.npos != 0 else 1 if self.ndet == 0 else 0
 
     @property
     def f1_score(self):
-        if self.tp + self.fp + self.fn == 0:
-            return 1.0
-        if self.tp == 0 and (self.fp > 0 or self.fn > 0):
-            return 0.0
-            
-        prec = self.precision
-        rec = self.recall
-        s = prec + rec
-
-        return 2 * prec * rec / s
+        p, r = self.precision, self.recall
+        s = p + r
+        return 2 * p * r / s if s != 0 else 0
 
     @property
     def avg_acc(self):
