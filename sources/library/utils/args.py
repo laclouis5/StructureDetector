@@ -2,7 +2,7 @@ import argparse
 import json
 import torch
 from pathlib import Path
-from .utils import get_unique_color_map
+from .utils import get_unique_color_map, set_seed
 
 
 class Arguments:
@@ -115,6 +115,8 @@ class Arguments:
 
         if torch.backends.cudnn.is_available():
             torch.backends.cudnn.benchmark = True
+
+        set_seed(926354916)
 
         if args.hm_loss_fn.lower() not in {"focal", "mse"}:
             raise IOError(f"'hm_loss_fn' should either be 'focal' or 'mse', not {args.hm_loss_fn}.")
