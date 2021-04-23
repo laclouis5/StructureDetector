@@ -208,8 +208,8 @@ class Evaluator:
             preds_kp_label = preds.get(kp_label, [])
             gts_kp_label = gts.get(kp_label, [])
 
-            res_kp.ndet += len(preds_kp_label)
-            res_kp.npos += len(gts_kp_label)
+            res_kp.ndet = len(preds_kp_label)
+            res_kp.npos = len(gts_kp_label)
 
             preds_kp_label = sorted(preds_kp_label,
                 key=lambda kp: kp.score,
