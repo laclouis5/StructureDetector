@@ -19,8 +19,8 @@ class Decoder:
 
     # output: (B, M+N+4, H/R, W/R), see network.py
     def __call__(self, outputs, conf_thresh=None, dist_thresh=None, img_size=None, return_metadata=False):
-        conf_thresh = self.args.conf_threshold if conf_thresh is None else conf_thresh
-        dist_thresh = self.args.decoder_dist_thresh if dist_thresh is None else dist_thresh
+        conf_thresh = conf_thresh or self.args.conf_threshold
+        dist_thresh = dist_thresh or self.args.decoder_dist_thresh
 
         (out_h, out_w) = outputs["anchor_hm"].shape[2:]  # H/R, W/R
         (in_h, in_w) = int(self.down_ratio * out_h), int(self.down_ratio * out_w)  # H, W

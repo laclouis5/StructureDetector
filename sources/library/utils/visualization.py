@@ -39,7 +39,7 @@ def draw(image, annotation, args, unnorm_image=True):
         draw.ellipse([x - offset, y - offset, x + offset, y + offset],
             fill=obj_color, outline=obj_color)
 
-        # if obj.box:
+        # if obj.box is not None:
         #     box = obj.box
         #     draw.rectangle([box.x_min, box.y_min, box.x_max, box.y_max], outline=obj_color, width=thickness)
 
