@@ -153,7 +153,7 @@ class Object:
     def resize(self, in_size, out_size):
         self.anchor.resize(in_size, out_size)
 
-        if self.box:
+        if self.box is not None:
             self.box.resize(in_size, out_size)
 
         for part in self.parts:
@@ -169,7 +169,7 @@ class Object:
 
     def normalize(self, size):
         self.anchor.normalize(size)
-        if self.box: 
+        if self.box is not None: 
             self.box.normalize(size)
 
         for part in self.parts:
@@ -347,7 +347,7 @@ def clip_annotation(annotation, img_size):
             part.x = np.clip(part.x, 0, img_w - 1)
             part.y = np.clip(part.y, 0, img_h - 1)
 
-        if obj.box:
+        if obj.box is not None:
             obj.box.x_min = np.clip(obj.box.x_min, 0, img_w - 1)
             obj.box.x_max = np.clip(obj.box.x_max, 0, img_w - 1)
             obj.box.y_min = np.clip(obj.box.y_min, 0, img_h - 1)
@@ -365,7 +365,7 @@ def hflip_annotation(annotation, img_size):
         for part in obj.parts:
             part.x = img_w - part.x - 1
 
-        if obj.box:
+        if obj.box is not None:
             x_max = img_w - obj.box.x_min - 1
             x_min = img_w - obj.box.x_max - 1
             obj.box.x_min, obj.box.x_max = x_min, x_max
@@ -382,7 +382,7 @@ def vflip_annotation(annotation, img_size):
         for part in obj.parts:
             part.y = img_h - part.y - 1
 
-        if obj.box:
+        if obj.box is not None:
             y_max = img_h - obj.box.y_min - 1
             y_min = img_h - obj.box.y_max - 1
             obj.box.y_min, obj.box.y_max = y_min, y_max
@@ -402,7 +402,7 @@ def resize_annotation(annotation, img_size, new_size):
             part.x = part.x / img_w * new_w
             part.y = part.y / img_h * new_h
 
-        if obj.box:
+        if obj.box is not None:
             obj.box.x_min = obj.box.x_min / img_w * new_w
             obj.box.x_max = obj.box.x_max / img_w * new_w
             obj.box.y_min = obj.box.y_min / img_h * new_h

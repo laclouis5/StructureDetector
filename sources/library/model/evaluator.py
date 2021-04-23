@@ -132,7 +132,7 @@ class Evaluator:
     def accumulate(self, prediction, annotation, part_heatmap=None, eval_csi=False, eval_classif=False):
         self.anchor_eval += self.eval_anchor(prediction, annotation)
 
-        if part_heatmap:
+        if part_heatmap is not None:
             self.part_eval += self.eval_part(annotation, part_heatmap)
         if eval_csi:
             self.csi_eval += self.eval_csi(prediction, annotation)
