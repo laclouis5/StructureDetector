@@ -31,13 +31,13 @@ class Decoder:
         (anchor_scores, anchor_inds, anchor_labels, anchor_ys, anchor_xs) = topk(
             anchor_hm, k=self.max_objects)  # (B, K)
         anchor_offsets = transpose_and_gather(outputs["offsets"], anchor_inds)  # (B, K, 2)
-        anchor_xs = anchor_xs + anchor_offsets[..., 0]  # (B, K)
-        anchor_ys = anchor_ys + anchor_offsets[..., 1]  # (B, K)
+        anchor_xs += anchor_offsets[..., 0]  # (B, K)
+        anchor_ys += anchor_offsets[..., 1]  # (B, K)
 
-        anchor_out = torch.stack([
+        anchor_out = torch.stack((
             anchor_xs, anchor_ys,
             anchor_scores, anchor_labels.float()
-        ], dim=2)  # (B, K, 4)
+        ), dim=2)  # (B, K, 4)
 
         # Parts
         part_hm_sig = clamped_sigmoid(outputs["part_hm"])  # (B, N, H/R, W/R)
@@ -46,16 +46,16 @@ class Decoder:
             part_hm, k=self.max_parts)  # (B, P)
         part_offsets = transpose_and_gather(outputs["offsets"], part_inds)  # (B, P, 2)
         embeddings = transpose_and_gather(outputs["embeddings"], part_inds)  # (B, P, 2)
-        part_xs = part_xs + part_offsets[..., 0]  # (B, P)
-        part_ys = part_ys + part_offsets[..., 1]  # (B, P)
+        part_xs += part_offsets[..., 0]  # (B, P)
+        part_ys += part_offsets[..., 1]  # (B, P)
         origin_xs = part_xs + embeddings[..., 0]  # (B, P)
         origin_ys = part_ys + embeddings[..., 1]  # (B, P)
 
-        part_out = torch.stack([
+        part_out = torch.stack((
             part_xs, part_ys,
             part_scores, part_labels.float(), 
             origin_xs, origin_ys
-        ], dim=2)  # (B, P, 6)
+        ), dim=2)  # (B, P, 6)
 
         # Anchor-part association
         part_mask = (part_scores > conf_thresh).float()  # (B, P)
@@ -68,13 +68,13 @@ class Decoder:
         pos_xs = (1e6*(1 - anchor_mask) + anchor_mask * anchor_xs)  # (B, K)
         pos_ys = (1e6*(1 - anchor_mask) + anchor_mask * anchor_ys)  # (B, K)
 
-        anchor_pos = torch.stack([pos_xs, pos_ys], dim=-1)  # (B, K, 2)
-        origins = torch.stack([ori_xs, ori_ys], dim=-1)  # (B, P, 2)
+        anchor_pos = torch.stack((pos_xs, pos_ys), dim=-1)  # (B, K, 2)
+        origins = torch.stack((ori_xs, ori_ys), dim=-1)  # (B, P, 2)
 
         anchor_pos = anchor_pos.unsqueeze(2).expand(-1, -1, self.max_parts, -1)  # (B, K, P, 2)
         origins = origins.unsqueeze(1).expand(-1, self.max_objects, -1, -1)  # (B, K, P, 2)
 
-        sq_distance = torch.sqrt(((origins - anchor_pos)**2).sum(dim=-1))  # (B, K, P)
+        sq_distance = torch.hypot(*torch.unbind(origins - anchor_pos, dim=-1))  # (B, K, P)
         (min_vals, min_inds) = sq_distance.min(dim=1)  # (B, P)
         min_vals = min_vals < (dist_thresh * min(out_w, out_h))  # (B, P)
 
@@ -88,7 +88,7 @@ class Decoder:
                 if not min_vals[b_i, i]:
                     continue
 
-                part_list[index.item()].append(part_out[b_i, i, ...])
+                part_list[index.item()].append(part_out[b_i, i])
 
             for anchor_i, anchor in enumerate(anchor_out[b_i]):
                 score = anchor[2].item()

@@ -38,10 +38,6 @@ class RandomVerticalFlip:
 class RandomColorJitter:
 
     def __init__(self, brightness=0.25, contrast=0.25, saturation=0.15, hue=0.05):
-        self.brightness = brightness
-        self.contrast = contrast
-        self.saturation = saturation
-        self.hue = hue
         self.transform = torchtf.ColorJitter(
             brightness=brightness,
             contrast=contrast,
@@ -52,7 +48,7 @@ class RandomColorJitter:
         return (self.transform(input), target)
 
     def __repr__(self):
-        return f"RandomColorJitter(brightness: {self.brightness}, contrast: {self.contrast}, saturation: {self.saturation}, hue: {self.hue})"
+        return f"RandomColorJitter(brightness: {self.transform.brightness}, contrast: {self.transform.contrast}, saturation: {self.transform.saturation}, hue: {self.transform.hue})"
 
 
 class Resize:
@@ -99,7 +95,7 @@ class RandomResize:
         return (image, annotation)
 
     def __repr__(self):
-        return f"RandomResize(ratios: {self.ratios})"
+        return f"RandomResize(ratios: {self.ratios}, img_width: {self.width}, img_height: {self.height})"
 
 
 class Compose:
@@ -120,8 +116,6 @@ class Compose:
 class Normalize:
 
     def __init__(self, mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]):
-        self.mean = mean
-        self.std = std
         self.transform = torchtf.Normalize(mean=mean, std=std)
 
     def __call__(self, input, target):
@@ -129,7 +123,7 @@ class Normalize:
         return (self.transform(output), target)
 
     def __repr__(self):
-        return f"Normalize(mean: {self.mean}, std: {self.std})"
+        return f"Normalize(mean: {self.transform.mean}, std: {self.transform.std})"
 
 
 class Encode:
@@ -169,7 +163,7 @@ class Encode:
             anchor_hm = gaussian_2d(X, Y, int(obj.x), int(obj.y), sigma)
             heatmaps[label_index] = torch.max(heatmaps[label_index], anchor_hm)
 
-            anchor_inds[obj_idx] = int(obj.y)*out_w + int(obj.x)
+            anchor_inds[obj_idx] = int(obj.y) * out_w + int(obj.x)
 
             anchor_offset = torch.tensor((obj.x - int(obj.x), obj.y - int(obj.y)))
             anchor_offs[obj_idx] = anchor_offset
@@ -182,7 +176,7 @@ class Encode:
                 part_hm = gaussian_2d(X, Y, int(kp.x), int(kp.y), sigma)
                 heatmaps[kind_index] = torch.max(heatmaps[kind_index], part_hm)
 
-                parts_inds[kp_idx] = int(kp.y)*out_w + int(kp.x)
+                parts_inds[kp_idx] = int(kp.y) * out_w + int(kp.x)
 
                 part_offset = torch.tensor((kp.x - int(kp.x), kp.y - int(kp.y)))
                 part_offs[kp_idx] = part_offset
@@ -199,8 +193,8 @@ class Encode:
 
         return {
             "image": input,
-            "anchor_hm": heatmaps[:len(self.labels), :, :],
-            "part_hm": heatmaps[len(self.labels):, :, :],
+            "anchor_hm": heatmaps[:len(self.labels)],
+            "part_hm": heatmaps[len(self.labels):],
             "anchor_inds": anchor_inds, "part_inds": parts_inds,
             "anchor_offsets": anchor_offs, "part_offsets": part_offs,
             "embeddings": embeddings,
@@ -243,7 +237,7 @@ class TrainAugmentation:
         return self.transform(input, target)
 
     def __repr__(self):
-        return f"{self.transform}"
+        return f"TrainAugmentation(transforms: {self.transform})"
 
 
 class ValidationAugmentation:
@@ -259,7 +253,7 @@ class ValidationAugmentation:
         return self.transform(input, target)
 
     def __repr__(self):
-        return f"{self.transform}"
+        return f"ValidationAugmentation(transforms: {self.transform})"
 
 
 class PredictionTransformation:
@@ -277,4 +271,4 @@ class PredictionTransformation:
         return self.tf(input)
 
     def __repr__(self):
-        return f"{self.tf}"
+        return f"PredictionTranformation(tranforms: {self.tf})"
