@@ -6,8 +6,8 @@ import torch
 
 def un_normalize(tensor):  # (B, 3, H, W)
     # (3, 1, 1)
-    mean = torch.tensor([0.485, 0.456, 0.406], device=tensor.device).unsqueeze(-1).unsqueeze(-1)
-    std = torch.tensor([0.229, 0.224, 0.225], device=tensor.device).unsqueeze(-1).unsqueeze(-1)
+    mean = torch.tensor([0.485, 0.456, 0.406], device=tensor.device)[..., None, None]
+    std = torch.tensor([0.229, 0.224, 0.225], device=tensor.device)[..., None, None]
     return tensor * std + mean
 
 
@@ -52,18 +52,16 @@ def draw_heatmaps(anchor_hm, part_hm, args):
     (c1, h, w) = anchor_hm.shape
     c2 = part_hm.shape[0]
 
-    # obj_colors = torch.tensor(list(get_unique_color_map(args.labels).values()), device=anchor_hm.device)
-    # part_colors = torch.tensor(list(get_unique_color_map(args.parts).values()), device=anchor_hm.device)
     obj_colors = torch.tensor([args._label_color_map.get(args._r_labels.get(i, None), (0, 0, 0)) for i in range(c1)], device=anchor_hm.device)
     part_colors = torch.tensor([args._part_color_map.get(args._r_parts.get(i, None), (0, 0, 0)) for i in range(c2)], device=part_hm.device)
 
-    obj_colors = obj_colors.unsqueeze(-1).unsqueeze(-1).expand(-1, -1, h, w)
-    part_colors = part_colors.unsqueeze(-1).unsqueeze(-1).expand(-1, -1, h, w)
+    obj_colors = obj_colors[..., None, None].expand(-1, -1, h, w)
+    part_colors = part_colors[..., None, None].expand(-1, -1, h, w)
 
     (anchor_hm_max, obj_inds) = torch.max(anchor_hm, 0)
     (part_hm_max, part_inds) = torch.max(part_hm, 0)
-    obj_inds = obj_inds.unsqueeze(0).unsqueeze(0).expand(-1, 3, -1, -1)
-    part_inds = part_inds.unsqueeze(0).unsqueeze(0).expand(-1, 3, -1, -1)
+    obj_inds = obj_inds[None, None, ...].expand(-1, 3, -1, -1)
+    part_inds = part_inds[None, None, ...].expand(-1, 3, -1, -1)
 
     anchor_hm_color = torch.gather(obj_colors, dim=0, index=obj_inds).squeeze()
     part_hm_color = torch.gather(part_colors, dim=0, index=part_inds).squeeze()
