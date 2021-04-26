@@ -12,6 +12,8 @@ from tqdm import tqdm
 from datetime import datetime
 from pathlib import Path
 
+from accelerate import Accelerator
+
 
 class Trainer:
 
@@ -21,6 +23,7 @@ class Trainer:
         self.loss = Loss(args)
         self.decoder = Decoder(args)
         self.evaluator = Evaluator(args)
+        self.accelerator = Accelerator(fp16=True)
 
         # Logging an metrics
         self.writer = SummaryWriter()
@@ -32,15 +35,6 @@ class Trainer:
         # TODO: Test this.
         if args.pretrained_model:
             self.net.load_state_dict(torch.load(args.pretrained_model, map_location=args.device))
-
-        if torch.cuda.device_count() > 1:
-            self.net = nn.DataParallel(self.net)
-
-        self.net.to(args.device)
-        self.loss.to(args.device)
-
-        self.optimizer = torch.optim.Adam(self.net.parameters(), args.learning_rate)
-        self.scheduler = torch.optim.lr_scheduler.StepLR(self.optimizer, step_size=args.lr_step)
 
         self.train_set = CropDataset(args, args.train_dir, transforms=TrainAugmentation(args))
         self.train_dataloader = data.DataLoader(self.train_set,
@@ -54,6 +48,13 @@ class Trainer:
             batch_size=1, collate_fn=CropDataset.collate_fn, shuffle=True,
             pin_memory=args.use_cuda,
             num_workers=args.num_workers)
+
+        self.optimizer = torch.optim.Adam(self.net.parameters(), args.learning_rate)
+
+        self.net, self.optimizer, self.train_dataloader, self.valid_dataloader, self.loss = self.accelerator.prepare(
+            self.net, self.optimizer, self.train_dataloader, self.valid_dataloader, self.loss)
+
+        self.scheduler = torch.optim.lr_scheduler.StepLR(self.optimizer, step_size=args.lr_step)
 
         # Logging
         self.save_dir = Path("trainings") / f"{datetime.now():%Y-%m-%d_%H-%M-%s}"
@@ -73,14 +74,10 @@ class Trainer:
         self.net.train()
 
         for batch in tqdm(self.train_dataloader, desc="Epoch", leave=False, unit="batch"):
-            for (k, v) in batch.items():
-                if isinstance(v, torch.Tensor):
-                    batch[k] = v.to(self.args.device)
-
             self.optimizer.zero_grad()
             output = self.net(batch["image"])
             loss = self.loss(output, batch)
-            loss.backward()
+            self.accelerator.backward(loss)
             self.optimizer.step()
 
             self.writer.add_scalars("Loss/Train", self.loss.stats.__dict__, self.global_step)
@@ -96,10 +93,6 @@ class Trainer:
         loss_stats = LossStats()
 
         for batch in tqdm(self.valid_dataloader, desc="Validation", leave=False, unit="image"):
-            for k, v in batch.items():
-                if isinstance(v, torch.Tensor):
-                    batch[k] = v.to(self.args.device)
-
             with torch.no_grad():
                 output = self.net(batch["image"])
 

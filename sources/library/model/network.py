@@ -32,7 +32,7 @@ class Head(nn.Module):
 
 class Network(nn.Module):
     
-    def __init__(self, args, pretrained=True):
+    def __init__(self, args, pretrained=True, freeze_backbone=False):
         super().__init__()
 
         self.label_count = len(args.labels)  # M
@@ -41,6 +41,10 @@ class Network(nn.Module):
         self.fpn_depth = args.fpn_depth
 
         resnet = torchvision.models.resnet34(pretrained=pretrained)
+
+        if freeze_backbone:
+            for param in resnet.parameters():
+                param.requires_grad = False
 
         self.adpater = nn.Sequential(resnet.conv1, resnet.bn1, resnet.relu, resnet.maxpool)  # /4
 
