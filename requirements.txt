@@ -26,3 +26,4 @@ typing-extensions==3.7.4.3
 urllib3==1.26.3
 Werkzeug==1.0.1
 xxhash==2.0.2
+rich==10.1.0
