@@ -35,4 +35,6 @@ if __name__ == "__main__":
         annotation = batch["annotation"][0]
         evaluator.accumulate(prediction, annotation, data["raw_parts"][0], True, True)
 
-    print(evaluator)
+    # print(evaluator)
+    evaluator.pretty_print()
+    evaluator.anchor_eval.pretty_print()

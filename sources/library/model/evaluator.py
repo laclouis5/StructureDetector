@@ -2,21 +2,23 @@ from ..utils import *
 import numpy as np
 import sys
 from functools import reduce
+from rich import print as rprint
+from rich.table import Table, Column
 
 
 class Evaluation:
 
-    def __init__(self, tp=0, npos=0, ndet=0, acc=0.0):
+    def __init__(self, tp=0, npos=0, ndet=0, acc=None):
         self.tp = tp
         self.npos = npos  
         self.ndet = ndet
-        self.acc = acc
+        self.acc = acc or []
 
     def reset(self):
         self.tp = 0
         self.npos = 0  
         self.ndet = 0
-        self.acc = 0.0
+        self.acc = []
 
     def __add__(self, other):
         return Evaluation(
@@ -60,10 +62,26 @@ class Evaluation:
 
     @property
     def avg_acc(self):
-        return self.acc / self.tp if self.tp != 0 else float("nan")
+        return np.mean(self.acc) if len(self.acc) != 0 else float("nan")
+
+    @property
+    def acc_err(self):
+        return np.std(self.acc) / np.sqrt(len(self.acc)) if len(self.acc) != 0 else float("nan")
+
+    def stats(self):
+        return f"{self.npos}", f"{self.ndet}", f"{self.recall:.2%}", f"{self.precision:.2%}", f"{self.f1_score:.2%}", f"{self.avg_acc:.2%}", f"{self.acc_err:.2%}"
+
+    @staticmethod
+    def columns():
+        return (Column("Gts.", justify="right"), Column("Preds.", justify="right"), Column("Rec.", justify="right"), Column("Prec.", justify="right"), Column("F1 Score", justify="right", style="green"), Column("L. Acc.", justify="right"), Column("L. Err.", justify="right"))
 
     def __repr__(self):
         return f"f1: {self.f1_score:.2%}, rec: {self.recall:.2%}, prec: {self.precision:.2%}, npos: {self.npos}, ndet: {self.ndet}, tp/fp/fn: {self.tp}/{self.fp}/{self.fn}, avg_acc: {self.avg_acc:.2}"
+
+    def pretty_print(self):
+        table = Table(*Evaluation.columns())
+        table.add_row(*self.stats())
+        rprint(table)
 
 
 class Evaluations:
@@ -105,6 +123,14 @@ class Evaluations:
 
     def reduce(self):
         return reduce(lambda e1, e2: e1 + e2, self.evals.values(), Evaluation())
+
+    def pretty_print(self):
+        table = Table("Label", *Evaluation.columns())
+        for label, evaluation in self.items():
+            table.add_row(label, *evaluation.stats())
+        if len(self) > 1:
+            table.add_row("Total", *self.reduce().stats(), style="bold")
+        rprint(table)
 
     def __repr__(self):
         description = ""
@@ -180,7 +206,7 @@ class Evaluator:
                 if min_dist < dist_thresh and not visited[j_min]:
                     visited[j_min] = True
                     res.tp += 1
-                    res.acc += min_dist / min(img_w, img_h)
+                    res.acc.append(min_dist / min(img_w, img_h))
 
         return result
 
@@ -230,7 +256,7 @@ class Evaluator:
                 if min_dist_kp < dist_thresh and not visited_kp[j_min_kp]:
                     visited_kp[j_min_kp] = True
                     res_kp.tp += 1
-                    res_kp.acc += min_dist_kp / min(img_w, img_h)
+                    res_kp.acc.append(min_dist_kp / min(img_w, img_h))
 
         return kp_result
 
@@ -275,7 +301,7 @@ class Evaluator:
                 if best_csi >= self.args.csi_threshold and not visited[idx_best]:
                     visited[idx_best] = True
                     res.tp += 1
-                    res.acc += best_csi
+                    res.acc.append(best_csi)
 
         return result
 
@@ -327,7 +353,7 @@ class Evaluator:
                 if best_dist <= dist_thresh and not visited[idx_best]:
                     visited[idx_best] = True
                     res.tp += 1
-                    res.acc += best_dist / min(img_w, img_h)
+                    res.acc.append(best_dist / min(img_w, img_h))
 
         return result
 
@@ -372,6 +398,21 @@ class Evaluator:
                     evaluation.tp += 1
 
         return evaluation.csi
+
+    def pretty_print(self):
+        results = {
+            "Anchor Location": self.anchor_eval, "Part Location": self.part_eval, 
+            "CSI": self.csi_eval, "Classification": self.classification_eval}
+
+        for title, evals in results.items():
+            total_eval = evals.reduce()
+            table = Table(Column("Label", style="bold"), *Evaluation.columns(), title=title)
+
+            for label, evaluation in evals.items():
+                table.add_row(label, *evaluation.stats())
+
+            table.add_row("Total", *total_eval.stats(), style="bold")
+            rprint(table)
 
     def __repr__(self):
         results = {
