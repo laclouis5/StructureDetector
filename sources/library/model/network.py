@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 import torchvision
+from mmdet.models import Darknet
 
 
 class Fpn(nn.Module):
@@ -40,29 +41,17 @@ class Network(nn.Module):
         self.out_channels = self.label_count + self.part_count + 4  # M+N+4
         self.fpn_depth = args.fpn_depth
 
-        resnet = torchvision.models.resnet34(pretrained=pretrained)
+        self.darknet = Darknet(out_indices=(2, 3, 4, 5))
 
-        self.adpater = nn.Sequential(resnet.conv1, resnet.bn1, resnet.relu, resnet.maxpool)  # /4
-
-        self.down1 = resnet.layer1  # /1 -> /4
-        self.down2 = resnet.layer2  # /2 -> /8
-        self.down3 = resnet.layer3  # /2 -> /16
-        self.down4 = resnet.layer4  # /2 -> /32
-
-        self.up1 = nn.Conv2d(512, self.fpn_depth, kernel_size=1)  # x1 -> /32
-        self.up2 = Fpn(256, self.fpn_depth)  # x2 -> /16
-        self.up3 = Fpn(128, self.fpn_depth)  # x2 -> /8
-        self.up4 = Fpn(64, self.fpn_depth)  # x2 -> /4
+        self.up1 = nn.Conv2d(1024, self.fpn_depth, kernel_size=1)  # x1 -> /32
+        self.up2 = Fpn(512, self.fpn_depth)  # x2 -> /16
+        self.up3 = Fpn(256, self.fpn_depth)  # x2 -> /8
+        self.up4 = Fpn(128, self.fpn_depth)  # x2 -> /4
 
         self.head = Head(self.fpn_depth, self.out_channels)
 
     def forward(self, x):  # (B, 3, H, W)
-        p1 = self.adpater(x)  # (B, 64, H/4, W/4)
-
-        p2 = self.down1(p1)  # (B, 64, H/4, W/4)
-        p3 = self.down2(p2)  # (B, 128, H/8, W/8)
-        p4 = self.down3(p3)  # (B, 256, H/16, W/16)
-        p5 = self.down4(p4)  # (B, 512, H/32, W/32)
+        p2, p3, p4, p5 = self.darknet(x)
 
         f4 = self.up1(p5)  # (B, 128, H/32, W/32)
         f3 = self.up2(f4, p4)  # (B, 128, H/16, W/16)

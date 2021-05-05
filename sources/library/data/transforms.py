@@ -207,7 +207,7 @@ class Encode:
 
 class TrainAugmentation:
 
-    ratios = (0.75, 0.8125, 0.875, 0.9375, 1, 1.0625, 1.125, 1.1875, 1.25)
+    ratios = (0.75, 0.8125, 0.875, 0.9375, 1, 1.0625, 1.125, 1.1875)
 
     def __init__(self, args):
         self.args = args
