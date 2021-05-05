@@ -221,7 +221,7 @@ class ImageAnnotation:
 
     @property
     def image_name(self):
-        return image_path.name
+        return self.image_path.name
 
     def normalize(self, size=None):
         size = size or self.img_size
@@ -246,7 +246,7 @@ class ImageAnnotation:
 
     def json_repr(self):
         return {
-            "image_path": str(self.image_path),
+            "image_path": str(self.image_path.expanduser().resolve()),
             "img_size": self.img_size,
             "objects": [obj.json_repr() for obj in self.objects],
         }

@@ -75,6 +75,26 @@ class CropDataset(data.Dataset):
         return description
 
 
+class PredictionDataset(data.Dataset):
+
+    def __init__(self, args, directory, transform=None):
+        self.images = sorted(files_with_extension(directory, ".jpg"))
+        self.transform = transform
+
+    def __getitem__(self, index):
+        image = self.images[index]
+        img = Image.open(image)
+        img_w, img_h = img.size
+
+        if self.transform is not None:
+            img = self.transform(img)
+
+        return {"img": img, "img_size": (img_w, img_h)}
+
+    def __len__(self):
+        return len(self.images)
+
+
 class LabelStats:
 
     def __init__(self):
