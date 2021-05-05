@@ -225,13 +225,14 @@ class TrainAugmentation:
         ])
 
     def trigger_random_resize(self):
-        if self.args.no_augmentation:
-            return
+        return
+        # if self.args.no_augmentation:
+        #     return
 
-        resize_ratio = self.ratios[torch.randint(len(self.ratios), (1,)).item()]
-        width = int(resize_ratio * self.args.width)
-        height = int(resize_ratio * self.args.height)
-        self.transform.transforms[0] = Resize((width, height))
+        # resize_ratio = self.ratios[torch.randint(len(self.ratios), (1,)).item()]
+        # width = int(resize_ratio * self.args.width)
+        # height = int(resize_ratio * self.args.height)
+        # self.transform.transforms[0] = Resize((width, height))
 
     def __call__(self, input, target):
         return self.transform(input, target)
