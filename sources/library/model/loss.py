@@ -44,20 +44,6 @@ class L1Loss(nn.Module):
     def __init__(self):
         super().__init__()
 
-    # # input: (B, 2, H, W), target: (B, K, 2), inds & mask: (B, K)
-    # def forward(self, input, target, inds, mask):
-    #     preds = transpose_and_gather(input, inds)  # (B, K, 2)
-    #     mask = mask.unsqueeze(2).expand_as(preds)  # (B, K, 2)
-    #     polar_diff = self.angle_norm_diff(preds, target)  # (B, K, 2)
-    #     return (polar_diff[mask == 1]).sum() / (mask.sum() + 1e-7)  # (1)
-
-    # def forward(self, input, target, inds, mask):
-    #     preds = transpose_and_gather(input, inds)
-    #     mask = mask.unsqueeze(2).expand_as(preds)
-    #     preds = self.cart_to_pol(preds)
-    #     loss = F.l1_loss(preds * mask, target * mask, reduction="sum")
-    #     return loss / (mask.sum() + 1e-7)
-
     def forward(self, input, target, inds, mask):  # (B, K, 2)
         preds = transpose_and_gather(input, inds)  # (B, K, 2)
 
@@ -68,27 +54,9 @@ class L1Loss(nn.Module):
         r2 = n2 / (n1 + 1e-7)  # (B, K)
         p = (target * preds).sum(dim=-1)  # (B, K)
 
-        # * (1 - p / (n1 * n2 + 1e-7))
-        loss = (torch.max(r1, r2) - 1) * mask  # (B, K)
+        loss = torch.sqrt(torch.max(r1, r2) - 1) * (1 - p / (n1 * n2 + 1e-7)) * mask  # (B, K)
 
         return loss.sum() / (mask.sum() + 1e-7)  # (1)
-
-    # def cart_to_pol(self, tensor):
-    #     x, y = torch.unbind(tensor, dim=-1)
-    #     norm = torch.hypot(x, y)
-    #     angle = torch.atan2(y, x) * 15.0
-    #     return torch.stack((norm, angle), dim=-1)
-
-    # def angle_norm_diff(self, t1, t2):  # (..., 2)
-    #     """
-    #     Return the angular difference in radians and absolute norm difference
-    #     between two tensors.
-    #     The angular difference is in [0, pi] and is undefined if one vector is 0.
-    #     """
-    #     n1 = torch.hypot(t1[..., 0], t1[..., 1])
-    #     n2 = torch.hypot(t2[..., 0], t2[..., 1])
-    #     angle = torch.arccos((t1 * t2).sum(axis=-1) / (n1 * n2 + 1e-7))
-    #     return torch.stack((torch.abs(n1 - n2), angle), dim=-1)  # (..., 2)
 
 
 class SmoothL1Loss(nn.Module):
