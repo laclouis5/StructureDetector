@@ -1,6 +1,4 @@
-from library.data import *
-from library.utils import *
-from library.model import *
+from library import *
 
 
 if __name__ == "__main__":
