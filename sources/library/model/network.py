@@ -69,15 +69,15 @@ class Network(nn.Module):
         f2 = self.up3(f3, p3)  # (B, 128, H/8, W/8)
         f1 = self.up4(f2, p2)  # (B, 128, H/4, W/4)
 
-        out = self.head(f1)  # (B, M+N+4, H/4, W/4)
+        return self.head(f1)  # (B, M+N+4, H/4, W/4)
 
-        nb_hm = self.label_count + self.part_count  # M+N
+        # nb_hm = self.label_count + self.part_count  # M+N
 
-        return {  # R = 4
-            "anchor_hm": out[:, :self.label_count],  # (B, M, H/R, W/R)
-            "part_hm": out[:, self.label_count:nb_hm],  # (B, N, H/R, W/R)
-            "offsets": out[:, nb_hm:(nb_hm + 2)],  # (B, 2, H/R, W/R)
-            "embeddings": out[:, (nb_hm + 2):(nb_hm + 4)]}  # (B, 2, H/R, W/R)
+        # return {  # R = 4
+        #     "anchor_hm": out[:, :self.label_count],  # (B, M, H/R, W/R)
+        #     "part_hm": out[:, self.label_count:nb_hm],  # (B, N, H/R, W/R)
+        #     "offsets": out[:, nb_hm:(nb_hm + 2)],  # (B, 2, H/R, W/R)
+        #     "embeddings": out[:, (nb_hm + 2):(nb_hm + 4)]}  # (B, 2, H/R, W/R)
 
     def save(self, path="last_model.pth"):
         torch.save(self.state_dict(), path)

@@ -19,6 +19,14 @@ class Decoder:
 
     # output: (B, M+N+4, H/R, W/R), see network.py
     def __call__(self, outputs, conf_thresh=None, dist_thresh=None, img_size=None, return_metadata=False):
+        nb_hm = len(self.label_map) + len(self.part_map)  # M+N
+
+        outputs = {  # R = 4
+            "anchor_hm": outputs[:, :len(self.label_map)],  # (B, M, H/R, W/R)
+            "part_hm": outputs[:, len(self.label_map):nb_hm],  # (B, N, H/R, W/R)
+            "offsets": outputs[:, nb_hm:(nb_hm + 2)],  # (B, 2, H/R, W/R)
+            "embeddings": outputs[:, (nb_hm + 2):(nb_hm + 4)]}  # (B, 2, H/R, W/R)
+
         conf_thresh = conf_thresh or self.args.conf_threshold
         dist_thresh = dist_thresh or self.args.decoder_dist_thresh
 

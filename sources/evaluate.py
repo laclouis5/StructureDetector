@@ -3,6 +3,7 @@ from library.utils import *
 from library.model import *
 import torch
 from tqdm import tqdm
+from torch2trt import torch2trt
 
 
 if __name__ == "__main__":
@@ -20,8 +21,9 @@ if __name__ == "__main__":
     decoder = Decoder(args)
     net = Network(args)
     net.load_state_dict(torch.load(args.pretrained_model, map_location=args.device))
-    net = net.to(args.device)
-    net.eval()
+    net = net.eval().to(args.device)
+    input = torch.ones(1, 3, 512, 512).cuda()
+    net = torch2trt(net, [input])
 
     for batch in tqdm(dataloader, desc="Evaluation", unit="image"):
         for k, v in batch.items():
