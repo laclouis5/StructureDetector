@@ -25,9 +25,11 @@ if __name__ == "__main__":
             if isinstance(v, torch.Tensor):
                 batch[k] = v.to(args.device)
 
-        output = net(batch["image"])
+        with torch.no_grad():
+            output = net(batch["image"])
+            
         img_size = batch["annotation"][0].img_size
-        data = decoder(output, img_size=img_size, return_metadata=True)
+        data = decoder(output, return_metadata=True)
         prediction = data["annotation"][0]
         annotation = batch["annotation"][0]
         evaluator.accumulate(prediction, annotation, data["raw_parts"][0], True, True)

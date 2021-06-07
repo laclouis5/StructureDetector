@@ -1,8 +1,6 @@
 from ..utils import *
-import copy
 import torch
 from collections import defaultdict
-import numpy as np
 
 
 class Decoder:
@@ -18,7 +16,7 @@ class Decoder:
         self.max_parts = args.max_parts  # P
 
     # output: (B, M+N+4, H/R, W/R), see network.py
-    def __call__(self, outputs, conf_thresh=None, dist_thresh=None, img_size=None, return_metadata=False):
+    def __call__(self, outputs, conf_thresh=None, dist_thresh=None, return_metadata=False):
         conf_thresh = conf_thresh or self.args.conf_threshold
         dist_thresh = dist_thresh or self.args.decoder_dist_thresh
 

@@ -23,7 +23,9 @@ if __name__ == "__main__":
             if isinstance(v, torch.Tensor):
                 batch[k] = v.to(args.device)
 
-        output = net(batch["img"])
+        with torch.no_grad():
+            output = net(batch["img"])
+            
         img_w, img_h = batch["img_size"]
         img_size = img_w.item(), img_h.item()
         annotation = decoder(output)[0]
@@ -32,5 +34,3 @@ if __name__ == "__main__":
         annotation.image_path = image_path
 
         annotation.save_json("predictions")
-    
-    
