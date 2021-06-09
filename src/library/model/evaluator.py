@@ -86,8 +86,8 @@ class Evaluation:
 
 class Evaluations:
 
-    def __init__(self, labels):
-        self.evals = {label: Evaluation() for label in labels}
+    def __init__(self, labels=None):
+        self.evals = {label: Evaluation() for label in labels} if labels else {}
 
     def reset(self):
         for label in self.evals.keys():
@@ -111,7 +111,7 @@ class Evaluations:
 
     def __add__(self, other):
         assert self.labels == other.labels, "The Evaluations should have the same labels"
-        evaluations = Evaluations(self.labels)
+        evaluations = Evaluations()
         evaluations.evals = {label: self.evals[label] + evaluation for (label, evaluation) in other.items()}
         return evaluations
 
@@ -119,6 +119,19 @@ class Evaluations:
         assert self.labels == other.labels, "The Evaluations should have the same labels"
         for (label, evaluation) in other.items():
             self.evals[label] += evaluation
+        return self
+
+    def __or__(self, other):
+        output = Evaluations()
+        output.evals =  \
+            {label: self[label] + other[label] for label in self.labels & other.labels} \
+            | {label: self[label] for label in self.labels - other.labels} \
+            | {label: other[label] for label in other.labels - self.labels}
+        return output
+
+    def __ior__(self, other):
+        self |= {label: other[label] for label in other.labels - self.labels}
+        self |= {label: self[label] + other[label] for label in self.labels & other.labels}
         return self
 
     def reduce(self):
