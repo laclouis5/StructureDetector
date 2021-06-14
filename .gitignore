@@ -4,6 +4,7 @@ trainings/
 runs/
 .DS_Store
 .vscode/
+*.npy
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

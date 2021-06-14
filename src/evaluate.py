@@ -35,3 +35,4 @@ if __name__ == "__main__":
         evaluator.accumulate(prediction, annotation, data["raw_parts"][0], True, True)
 
     evaluator.pretty_print()
+    evaluator.classification_eval.reduce().save_conf_matrix()

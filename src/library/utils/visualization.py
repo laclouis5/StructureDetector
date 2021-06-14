@@ -1,5 +1,5 @@
 from .utils import *
-from PIL import Image, ImageDraw
+from PIL import ImageDraw
 import torchvision.transforms.functional as F
 import torch
 
@@ -135,3 +135,21 @@ def draw_embeddings(image, embeddings, args):
 
     return image
     
+
+def draw_keypoints(image, keypoints, args):
+    draw = ImageDraw.Draw(image)
+    img_w, img_h = image.size
+    offset = int(min(img_w, img_h) * 1/100)
+
+    for kp in keypoints:
+        if kp.kind in args.labels.keys():
+            color = args._label_color_map[kp.kind]
+        elif kp.kind in args.parts.keys():
+            color = args._part_color_map[kp.kind]
+        else: raise ValueError
+
+        draw.ellipse([kp.x - offset, kp.y - offset, kp.x + offset, kp.y + offset],
+            fill=color, 
+            outline=color)
+
+    return image

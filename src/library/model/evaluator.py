@@ -4,7 +4,6 @@ import sys
 from functools import reduce
 from rich import print as rprint
 from rich.table import Table, Column
-from collections import defaultdict
 
 
 class Evaluation:
@@ -93,10 +92,12 @@ class Evaluation:
         rprint(table)
 
     def save_conf_matrix(self):
-        conf_mat = np.zeros((10, 10))
-        for p, e in self.count_errors:
-            conf_mat[e, p] += 1
-        np.save("conf_mat.npy", conf_mat)
+        c_err_by_label = dict_grouping(self.count_errors, lambda t: t[0])
+        for label, count_errors in c_err_by_label.items():
+            conf_mat = np.zeros((10, 10))
+            for _, p, e in count_errors:
+                conf_mat[e, p] += 1
+            np.save(f"conf_mat_{label}.npy", conf_mat)
 
 
 class Evaluations:
@@ -336,9 +337,7 @@ class Evaluator:
     @staticmethod
     def get_classification_labels():
         """WARNING: Hardcoded"""
-        labels = [f"maize_{index}" for index in range(10)]
-        labels += [f"bean_{index}" for index in range(10)]
-        return labels
+        return [f"bean_{index}" for index in range(10)] + [f"maize_{index}" for index in range(10)]
 
     def eval_classif(self, prediction, annotation):
         img_size = annotation.img_size
@@ -424,17 +423,21 @@ class Evaluator:
                         best_dist = dist
                         idx_best = i
 
-                if best_dist > dist_thresh or visited[idx_best] or (pred.name not in gts[idx_best].name):
+                if best_dist > dist_thresh or \
+                    visited[idx_best] or \
+                    (pred.name not in gts[idx_best].name):
                     continue
-                
+                    
+                # Same label from here
+                label = pred.name
                 if pred.nb_parts != gts[idx_best].nb_parts:
-                    res.count_errors.append((pred.nb_parts, gts[idx_best].nb_parts))
+                    res.count_errors.append((label, pred.nb_parts, gts[idx_best].nb_parts))
                     continue
 
                 visited[idx_best] = True
                 res.tp += 1
                 res.acc.append(best_dist / min(img_w, img_h))
-                res.count_errors.append((pred.nb_parts, gts[idx_best].nb_parts))
+                res.count_errors.append((label, pred.nb_parts, gts[idx_best].nb_parts))
 
         return result
 

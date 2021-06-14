@@ -129,3 +129,70 @@ class Decoder:
                 "raw_parts": raw_parts, "raw_embeddings": outputs["embeddings"], "raw_offsets": outputs["offsets"]}
             
         return annotations  # (B)
+
+
+class KeypointDecoder:
+
+    def __init__(self, args):
+        self.label_map = args._r_labels
+        self.part_map = args._r_parts
+        self.anchor_name = args.anchor_name
+
+        self.args = args
+        self.down_ratio = args.down_ratio
+        self.max_objects = args.max_objects  # K
+        self.max_parts = args.max_parts  # P
+
+    # output: (B, M+N+4, H/R, W/R), see network.py
+    def __call__(self, outputs):
+        conf_thresh = self.args.conf_threshold
+        out_h, out_w = outputs["anchor_hm"].shape[2:]  # H/R, W/R
+        in_h, in_w = int(self.down_ratio * out_h), int(self.down_ratio * out_w)  # H, W
+        r_h, r_w = in_h / out_h, in_w / out_w
+
+        # Anchors
+        anchor_hm_sig = clamped_sigmoid(outputs["anchor_hm"])  # (B, M, H/R, W/R)
+        anchor_hm = nms(anchor_hm_sig)  # (B, M, H/R, W/R)
+        (anchor_scores, anchor_inds, anchor_labels, anchor_ys, anchor_xs) = topk(
+            anchor_hm, k=self.max_objects)  # (B, K)
+        anchor_offsets = transpose_and_gather(outputs["offsets"], anchor_inds)  # (B, K, 2)
+        anchor_xs += anchor_offsets[..., 0]  # (B, K)
+        anchor_ys += anchor_offsets[..., 1]  # (B, K)
+
+        anchors = torch.stack((
+            anchor_xs * r_w, anchor_ys * r_h,
+            anchor_scores, anchor_labels.float()
+        ), dim=2)  # (B, K, 4)
+
+        # Parts
+        part_hm_sig = clamped_sigmoid(outputs["part_hm"])  # (B, N, H/R, W/R)
+        part_hm = nms(part_hm_sig)  # (B, N, H/R, W/R)
+        (part_scores, part_inds, part_labels, part_ys, part_xs) = topk(
+            part_hm, k=self.max_parts)  # (B, P)
+        part_offsets = transpose_and_gather(outputs["offsets"], part_inds)  # (B, P, 2)
+        part_xs += part_offsets[..., 0]  # (B, P)
+        part_ys += part_offsets[..., 1]  # (B, P)
+
+        parts = torch.stack((
+            part_xs * r_w, part_ys * r_h,
+            part_scores, part_labels.float(),
+        ), dim=2)  # (B, P, 4)
+        
+        annotations = []
+
+        for anchor_batch, part_batch in zip(anchors, parts):
+            keypoints = []
+
+            for x, y, score, label in anchor_batch:
+                if score < conf_thresh: continue
+                label = self.label_map[int(label.item())]
+                keypoints.append(Keypoint(kind=label, x=x.item(), y=y.item(), score=score.item()))
+
+            for x, y, score, label in part_batch:
+                if score < conf_thresh: continue
+                label = self.part_map[int(label)]
+                keypoints.append(Keypoint(kind=label, x=x.item(), y=y.item(), score=score.item()))
+            
+            annotations.append(keypoints)
+
+        return annotations
