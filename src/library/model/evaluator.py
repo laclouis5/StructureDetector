@@ -71,13 +71,9 @@ class Evaluation:
     @property
     def acc_err(self):
         return np.std(self.acc) / np.sqrt(len(self.acc)) if len(self.acc) != 0 else float("nan")
-
-    # @property
-    # def avg_count_error(self):
-    #     return np.mean(self.count_errors) if len(self.count_errors) != 0 else float("nan")
-
+        
     def stats(self):
-        return f"{self.npos}", f"{self.ndet}", f"{self.recall:.2%}", f"{self.precision:.2%}", f"{self.f1_score:.2%}", f"{self.avg_acc:.2%}", f"{self.acc_err:.2%}"
+        return f"{self.npos}", f"{self.ndet}", f"{self.recall:.2%}", f"{self.precision:.2%}", f"{self.f1_score:.2%}", f"{self.avg_acc:.4%}", f"{self.acc_err:.4%}"
 
     @staticmethod
     def columns():
@@ -153,8 +149,8 @@ class Evaluations:
     def reduce(self):
         return reduce(lambda e1, e2: e1 + e2, self.evals.values(), Evaluation())
 
-    def pretty_print(self):
-        table = Table("Label", *Evaluation.columns())
+    def pretty_print(self, table_name=None):
+        table = Table("Label", *Evaluation.columns(), title=table_name)
         for label, evaluation in self.items():
             table.add_row(label, *evaluation.stats())
         if len(self) > 1:
@@ -399,6 +395,7 @@ class Evaluator:
         preds = dict_grouping(prediction.objects, key=lambda obj: f"{obj.name}_{obj.nb_parts}")
         _gts = dict_grouping(annotation.objects, key=lambda obj: f"{obj.name}_{obj.nb_parts}")
         gts = annotation.objects
+        visited = [False] * len(gts)
         labels = Evaluator.get_classification_labels()
         result = Evaluations(labels)
 
@@ -411,7 +408,6 @@ class Evaluator:
             res.npos = len(gts_label)
 
             preds_label = sorted(preds_label, key=lambda obj: obj.anchor.score, reverse=True)
-            visited = np.repeat(False, len(gts))
 
             for pred in preds_label:
                 best_dist = sys.float_info.max
@@ -489,13 +485,15 @@ class Evaluator:
             "CSI": self.csi_eval, "Classification": self.classification_eval}
 
         for title, evals in results.items():
-            total_eval = evals.reduce()
             table = Table(Column("Label", style="bold"), *Evaluation.columns(), title=title)
 
             for label, evaluation in evals.items():
                 table.add_row(label, *evaluation.stats())
 
-            table.add_row("Total", *total_eval.stats(), style="bold")
+            if len(evals) > 1:
+                total_eval = evals.reduce()
+                table.add_row("Total", *total_eval.stats(), style="bold")
+            
             rprint(table)
 
     def __repr__(self):

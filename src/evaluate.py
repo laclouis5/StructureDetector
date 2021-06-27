@@ -27,12 +27,12 @@ if __name__ == "__main__":
 
         with torch.no_grad():
             output = net(batch["image"])
-            
-        img_size = batch["annotation"][0].img_size
+
         data = decoder(output, return_metadata=True)
         prediction = data["annotation"][0]
         annotation = batch["annotation"][0]
         evaluator.accumulate(prediction, annotation, data["raw_parts"][0], True, True)
 
     evaluator.pretty_print()
-    evaluator.classification_eval.reduce().save_conf_matrix()
+    # evaluator.classification_eval.reduce().save_conf_matrix()
+    (evaluator.anchor_eval | evaluator.part_eval).pretty_print(table_name="All Keypoints")

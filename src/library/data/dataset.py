@@ -34,6 +34,7 @@ class CropDataset(data.Dataset):
     def __getitem__(self, index):
         annotation = ImageAnnotation.from_json(self.files[index], self.args.anchor_name)
         image = Image.open(annotation.image_path)
+        annotation.img_size = image.size
 
         if self.transform is not None:
             return self.transform(image, annotation)
