@@ -199,6 +199,7 @@ class Object:
                 assert anchor is None, f"More than one anchor found for object, achor must be unique."
                 anchor = part
             else:
+                part.kind = f"{name}_{part.kind}"
                 parts.append(part)
 
         assert anchor is not None, f"Anchor part with name '{anchor_name}' not found while decoding JSON file."
