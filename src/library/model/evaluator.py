@@ -135,10 +135,9 @@ class Evaluations:
 
     def __or__(self, other):
         output = Evaluations()
-        output.evals =  \
-            {label: self[label] + other[label] for label in self.labels & other.labels} \
-            | {label: self[label] for label in self.labels - other.labels} \
-            | {label: other[label] for label in other.labels - self.labels}
+        output.evals =  {label: self[label] + other[label] for label in self.labels & other.labels}
+        output.evals.update((label, self[label]) for label in self.labels - other.labels)
+        output.evals.update((label, other[label]) for label in other.labels - self.labels)
         return output
 
     def __ior__(self, other):

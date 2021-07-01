@@ -28,6 +28,7 @@ class Trainer:
         self.best_loss = torch.finfo().max
         self.best_csi = 0.0
         self.best_classif = 0.0
+        self.best_kps_reg = 0.0
 
         # TODO: Test this.
         if args.pretrained_model:
@@ -136,6 +137,8 @@ class Trainer:
         f1_classif = {label: eval.f1_score for (label, eval) in self.evaluator.classification_eval.items()}
         f1_classif["total"] = self.evaluator.classification_eval.reduce().f1_score
 
+        all_kps_reg_f1 = (self.evaluator.anchor_eval | self.evaluator.part_eval).reduce().f1_score
+
         # Save best network
         if loss_stats.total_loss < self.best_loss:
             self.best_loss = loss_stats.total_loss
@@ -146,6 +149,10 @@ class Trainer:
         if f1_classif["total"] > self.best_classif:
             self.best_classif = f1_classif["total"]
             self.net.save(self.save_dir / "model_best_classif.pth")
+        if all_kps_reg_f1 > self.best_kps_reg:
+            print(all_kps_reg_f1)
+            self.best_kps_reg = all_kps_reg_f1
+            self.net.save(self.save_dir / "model_best_kp_reg.pth")
 
         # Draw metrics to Tensorboard
         self.writer.add_scalars("Loss/Validation", loss_stats.__dict__, self.global_step)
