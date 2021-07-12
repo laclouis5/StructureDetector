@@ -313,13 +313,13 @@ def set_seed(seed="1975846251"):
 
 
 # feat: (B, J, C), ind: (B, N)
-def gather(feat, ind):
+def gather(feat: torch.Tensor, ind: torch.Tensor):
     ind = ind.unsqueeze(-1).expand(-1, -1, feat.size(2))  #  (B, N, C)
     return feat.gather(1, ind) # (B, N, C)
 
 
 # feat: (B, C, H, W), ind: (B, N)
-def transpose_and_gather(feat, ind):
+def transpose_and_gather(feat: torch.Tensor, ind: torch.Tensor):
     ind = ind.unsqueeze(1).expand(-1, feat.size(1), -1)  # (B, C, N)
     feat = feat.view(feat.size(0), feat.size(1), -1)  # (B, C, J = H * W)
     feat = feat.gather(2, ind)  # (B, C, N)
@@ -327,12 +327,12 @@ def transpose_and_gather(feat, ind):
 
 
 # input: Tensor
-def clamped_sigmoid(input):
+def clamped_sigmoid(input: torch.Tensor):
     output = torch.sigmoid(input)
     return clamp_in_0_1(output)
 
 
-def clamp_in_0_1(tensor):
+def clamp_in_0_1(tensor: torch.Tensor):
     return torch.clamp(tensor, min=1e-6, max=1-1e-6)
 
 
@@ -416,24 +416,24 @@ def gaussian_2d(X, Y, mu1, mu2, sigma):
 
 
 # heatmaps: (B, C, H, W)
-def nms(heatmaps):
+def nms(heatmaps: torch.Tensor):
     max_values = nn.functional.max_pool2d(heatmaps, kernel_size=5, stride=1, padding=2)
     return (heatmaps == max_values) * heatmaps  # (B, C, H, W)
 
 
 # scores: (B, C, H, W)
-def topk(scores, k=100):
-    (batch, cat, _, width) = scores.size()
+def topk(scores: torch.Tensor, k: int = 100):
+    batch, cat, _, width = scores.size()
 
     # (B, C, K)
-    (topk_scores, topk_inds) = torch.topk(scores.view(batch, cat, -1), k)
+    topk_scores, topk_inds = torch.topk(scores.view(batch, cat, -1), k)
 
     # (B, C, K)
     topk_ys = (topk_inds // width).float()
     topk_xs = (topk_inds % width).float()
 
     # (B, K)
-    (topk_score, topk_ind) = torch.topk(topk_scores.view(batch, -1), k)
+    topk_score, topk_ind = torch.topk(topk_scores.view(batch, -1), k)
     topk_clses = (topk_ind // k)
 
     # (B, K)

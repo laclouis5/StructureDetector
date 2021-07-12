@@ -141,7 +141,7 @@ class DatasetStats:
             for obj in objects:
                 self.stats[obj.name].update(obj)
         else:
-            self.stats[obj.name].update(objects)
+            self.stats[objects.name].update(objects)
 
     def __repr__(self):
         description = ""
