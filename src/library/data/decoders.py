@@ -15,56 +15,6 @@ class Decoder:
         self.max_objects = args.max_objects  # K
         self.max_parts = args.max_parts  # P
 
-    def decode_heatmaps(self, heatmaps, offsets, max_objects, embeddings=None):
-        heatmaps = clamped_sigmoid(heatmaps)  # (B, C, H/R, W/R)
-        heatmaps = nms(heatmaps)  # (B, C, H/R, W/R)
-        scores, inds, labels, ys, xs = topk(heatmaps, k=max_objects)  # (C, K)
-        offsets = transpose_and_gather(offsets, inds)  # (B, K, 2)
-        xs += offsets[..., 0]
-        ys += offsets[..., 1]
-
-        if embeddings is not None:
-            offsets = transpose_and_gather(embeddings, inds)
-            exs = xs + offsets[..., 0]
-            eys = ys + offsets[..., 1]
-            return xs, ys, scores, labels.float(), exs, eys
-
-        return xs, ys, scores, labels.float()
-
-    def associate(self, xs, ys, exs, eys, scores, p_scores, ct, dt):
-        part_mask = (p_scores > ct).float()  # (B, P)
-        ori_xs = (-1e6*(1 - part_mask) + part_mask * exs)  # (B, P)
-        ori_ys = (-1e6*(1 - part_mask) + part_mask * eys)  # (B, P)
-
-        anchor_mask = (scores > ct).float()  # (B, K)
-        pos_xs = (1e6*(1 - anchor_mask) + anchor_mask * xs)  # (B, K)
-        pos_ys = (1e6*(1 - anchor_mask) + anchor_mask * ys)  # (B, K)
-
-        anchor_pos = torch.stack((pos_xs, pos_ys), dim=-1)  # (B, K, 2)
-        origins = torch.stack((ori_xs, ori_ys), dim=-1)  # (B, P, 2)
-
-        anchor_pos = anchor_pos.unsqueeze(2).expand(-1, -1, self.max_parts, -1)  # (B, K, P, 2)
-        origins = origins.unsqueeze(1).expand(-1, self.max_objects, -1, -1)  # (B, K, P, 2)
-
-        sq_distance = torch.hypot(*torch.unbind(origins - anchor_pos, dim=-1))  # (B, K, P)
-        vals, inds = sq_distance.min(dim=1)  # (B, P)
-
-        return inds, vals < dt
-
-    def decode(self, input: torch.Tensor):
-        ct = self.args.conf_threshold
-        dt = self.args.decoder_dist_thresh
-
-        out_h, out_w = input["anchor_hm"].shape[2:]  # H/R, W/R
-        in_h, in_w = int(self.down_ratio * out_h), int(self.down_ratio * out_w)  # H, W
-        dt *= min(out_w, out_h)
-
-        xs, ys, scores, labels = self.decode_heatmaps(input["anchor_hm"], input["offsets"], self.max_objects)
-        pxs, pys, p_scores, p_labels, exs, eys = self.decode_heatmaps(input["part_hm"], input["offsets"], self.max_parts)
-        vals, inds = self.associate(xs, ys, exs, eys, scores, p_scores, ct, dt)
-
-        return NotImplementedError
-
     # output: (B, M+N+4, H/R, W/R), see network.py
     def __call__(self, outputs, conf_thresh=None, dist_thresh=None, return_metadata=False):
         # sourcery no-metrics
