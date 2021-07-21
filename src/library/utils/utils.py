@@ -393,10 +393,6 @@ def vflip_annotation(annotation, img_size):
     return annotation
 
 
-def resize_annotation(annotation, img_size, new_size):
-    return annotation.resize(img_size, new_size)
-
-
 def gaussian_2d(X, Y, mu1, mu2, sigma):
     return torch.exp((-(X - mu1)**2 - (Y - mu2)**2) / (2 * sigma**2))
 
