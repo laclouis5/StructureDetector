@@ -17,11 +17,11 @@ class Keypoint:
         self.score = score
 
     def resize(self, in_size, out_size):
-        (img_w, img_h) = in_size
-        (new_w, new_h) = out_size
+        img_w, img_h = in_size
+        new_w, new_h = out_size
 
-        self.x = self.x / img_w * new_w
-        self.y = self.y / img_h * new_h
+        self.x *= new_w / img_w
+        self.y *= new_h / img_h
 
         return self
 
@@ -32,8 +32,9 @@ class Keypoint:
         return np.hypot(self.x - other.x, self.y - other.y)
 
     def normalize(self, size):
-        self.x = self.x / size[0]
-        self.y = self.y / size[1]
+        w, h = size
+        self.x /= w
+        self.y /= h
         return self
 
     def normalized(self, size):
@@ -80,27 +81,30 @@ class Box:
         return abs(self.y_max - self.y_min)
 
     def resize(self, in_size, out_size):
-        self.x_min = self.x_min / in_size[0] * out_size[0]
-        self.y_min = self.y_min / in_size[1] * out_size[1]
-        self.x_max = self.x_max / in_size[0] * out_size[0]
-        self.y_max = self.y_max / in_size[1] * out_size[1]
+        iw, ih = in_size
+        ow, oh = out_size
+        rw, rh = ow / iw, oh / ih
+        self.x_min *= rw
+        self.y_min *= rh
+        self.x_max *= rw
+        self.y_max *= rh
         return self
 
     def resized(self, in_size, out_size):
         return copy.deepcopy(self).reize(in_size, out_size)
 
     def normalize(self, size):
-        self.x_min = self.x_min / size[0]
-        self.y_min = self.y_min / size[1]
-        self.x_max = self.x_max / size[0]
-        self.y_max = self.y_max / size[1]
+        self.x_min /= size[0]
+        self.y_min /= size[1]
+        self.x_max /= size[0]
+        self.y_max /= size[1]
         return self
 
     def normalized(self, size):
         return copy.deepcopy(self).normalize(size)
 
     def yolo_coords(self, size):
-        return (self.x_mid / size[0], self.y_mid / size[1], self.width / size[0], self.height / size[1])
+        return self.x_mid / size[0], self.y_mid / size[1], self.width / size[0], self.height / size[1]
 
     def standardize(self):
         if self.x_min > self.x_max:
@@ -294,7 +298,6 @@ class AverageMeter:
         self.sum += value
         self.count += 1
         self.avg = self.sum / self.count
-
         return self.avg
 
 
@@ -357,7 +360,7 @@ def clip_annotation(annotation, img_size):
 
 
 def hflip_annotation(annotation, img_size):
-    (img_w, _) = img_size
+    img_w, _ = img_size
 
     for obj in annotation.objects:
         obj.x = img_w - obj.x - 1
@@ -374,7 +377,7 @@ def hflip_annotation(annotation, img_size):
 
 
 def vflip_annotation(annotation, img_size):
-    (_, img_h) = img_size
+    _, img_h = img_size
 
     for obj in annotation.objects:
         obj.y = img_h - obj.y - 1
@@ -391,24 +394,7 @@ def vflip_annotation(annotation, img_size):
 
 
 def resize_annotation(annotation, img_size, new_size):
-    (img_w, img_h) = img_size
-    (new_w, new_h) = new_size
-
-    for obj in annotation.objects:
-        obj.x = obj.x / img_w * new_w
-        obj.y = obj.y / img_h * new_h
-
-        for part in obj.parts:
-            part.x = part.x / img_w * new_w
-            part.y = part.y / img_h * new_h
-
-        if obj.box is not None:
-            obj.box.x_min = obj.box.x_min / img_w * new_w
-            obj.box.x_max = obj.box.x_max / img_w * new_w
-            obj.box.y_min = obj.box.y_min / img_h * new_h
-            obj.box.y_max = obj.box.y_max / img_h * new_h
-
-    return annotation
+    return annotation.resize(img_size, new_size)
 
 
 def gaussian_2d(X, Y, mu1, mu2, sigma):
