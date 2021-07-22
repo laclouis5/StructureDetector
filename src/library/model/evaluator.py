@@ -77,7 +77,14 @@ class Evaluation:
 
     @staticmethod
     def columns():
-        return Column("Gts.", justify="right"), Column("Preds.", justify="right"), Column("Rec.", justify="right"), Column("Prec.", justify="right"), Column("F1 Score", justify="right", style="green"), Column("L. Acc.", justify="right"), Column("L. Err.", justify="right")
+        return (
+            Column("Gts.", justify="right"), 
+            Column("Preds.", justify="right"), 
+            Column("Rec.", justify="right"), 
+            Column("Prec.", justify="right"), 
+            Column("F1 Score", justify="right", style="green"), 
+            Column("L. Acc.", justify="right"), 
+            Column("L. Err.", justify="right"))
 
     def __repr__(self):
         return f"f1: {self.f1_score:.2%}, rec: {self.recall:.2%}, prec: {self.precision:.2%}, npos: {self.npos}, ndet: {self.ndet}, tp/fp/fn: {self.tp}/{self.fp}/{self.fn}, avg_acc: {self.avg_acc:.2}"

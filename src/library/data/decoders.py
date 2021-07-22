@@ -17,16 +17,17 @@ class Decoder:
 
     # output: (B, M+N+4, H/R, W/R), see network.py
     def __call__(self, outputs, conf_thresh=None, dist_thresh=None, return_metadata=False):
+        # sourcery no-metrics
         conf_thresh = conf_thresh or self.args.conf_threshold
         dist_thresh = dist_thresh or self.args.decoder_dist_thresh
 
-        (out_h, out_w) = outputs["anchor_hm"].shape[2:]  # H/R, W/R
-        (in_h, in_w) = int(self.down_ratio * out_h), int(self.down_ratio * out_w)  # H, W
+        out_h, out_w = outputs["anchor_hm"].shape[2:]  # H/R, W/R
+        in_h, in_w = int(self.down_ratio * out_h), int(self.down_ratio * out_w)  # H, W
 
         # Anchors
         anchor_hm_sig = clamped_sigmoid(outputs["anchor_hm"])  # (B, M, H/R, W/R)
         anchor_hm = nms(anchor_hm_sig)  # (B, M, H/R, W/R)
-        (anchor_scores, anchor_inds, anchor_labels, anchor_ys, anchor_xs) = topk(
+        anchor_scores, anchor_inds, anchor_labels, anchor_ys, anchor_xs = topk(
             anchor_hm, k=self.max_objects)  # (B, K)
         anchor_offsets = transpose_and_gather(outputs["offsets"], anchor_inds)  # (B, K, 2)
         anchor_xs += anchor_offsets[..., 0]  # (B, K)
@@ -40,7 +41,7 @@ class Decoder:
         # Parts
         part_hm_sig = clamped_sigmoid(outputs["part_hm"])  # (B, N, H/R, W/R)
         part_hm = nms(part_hm_sig)  # (B, N, H/R, W/R)
-        (part_scores, part_inds, part_labels, part_ys, part_xs) = topk(
+        part_scores, part_inds, part_labels, part_ys, part_xs = topk(
             part_hm, k=self.max_parts)  # (B, P)
         part_offsets = transpose_and_gather(outputs["offsets"], part_inds)  # (B, P, 2)
         embeddings = transpose_and_gather(outputs["embeddings"], part_inds)  # (B, P, 2)

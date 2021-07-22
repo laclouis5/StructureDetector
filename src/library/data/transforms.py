@@ -62,11 +62,10 @@ class Resize:
         else:
             raise IOError("Input 'size' must be an int or a tuple<int>.")
 
-    # TODO: Change "resize_annotation"
     def __call__(self, input, target):
         image = F.resize(input, (self.height, self.width))
-        annotation = resize_annotation(target, input.size, (self.width, self.height))
-        return (image, annotation)
+        annotation = target.resized(input.size, (self.width, self.height))
+        return image, annotation
 
     def __repr__(self):
         return f"Resize(width: {self.width}, height: {self.height})"
