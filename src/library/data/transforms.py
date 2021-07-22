@@ -1,7 +1,6 @@
 from ..utils import *
 import torchvision.transforms as torchtf
 import torchvision.transforms.functional as F
-import PIL
 import torch
 
 
@@ -229,8 +228,8 @@ class TrainAugmentation:
             return
 
         resize_ratio = self.ratios[torch.randint(len(self.ratios), (1,)).item()]
-        width = int(resize_ratio * self.args.width)
-        height = int(resize_ratio * self.args.height)
+        width = int(resize_ratio * self.args.width / 32) * 32
+        height = int(resize_ratio * self.args.height / 32) * 32
         self.transform.transforms[0] = Resize((width, height))
 
     def __call__(self, input, target):

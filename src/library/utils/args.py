@@ -1,7 +1,6 @@
 import argparse
 import json
 import torch
-from pathlib import Path
 from .utils import get_unique_color_map, set_seed
 
 

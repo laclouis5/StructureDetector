@@ -28,6 +28,7 @@ class Trainer:
         self.best_loss = torch.finfo().max
         self.best_csi = 0.0
         self.best_classif = 0.0
+        self.best_kp_reg = 0.0
 
         # TODO: Test this.
         if args.pretrained_model:
@@ -136,6 +137,17 @@ class Trainer:
         f1_classif = {label: eval.f1_score for (label, eval) in self.evaluator.classification_eval.items()}
         f1_classif["total"] = self.evaluator.classification_eval.reduce().f1_score
 
+        all_kps = self.evaluator.kps_eval
+        all_kps_evals = all_kps.reduce()
+        kps_prec = {label: eval.precision for label, eval in all_kps.items()}
+        kps_prec["total"] = all_kps_evals.precision
+        kps_rec = {label: eval.recall for label, eval in all_kps.items()}
+        kps_rec["total"] = all_kps_evals.recall
+        kps_f1 = {label: eval.f1_score for label, eval in all_kps.items()}
+        kps_f1["total"] = all_kps_evals.f1_score
+
+        f1_kp_reg = all_kps_evals.f1_score
+
         # Save best network
         if loss_stats.total_loss < self.best_loss:
             self.best_loss = loss_stats.total_loss
@@ -146,9 +158,15 @@ class Trainer:
         if f1_classif["total"] > self.best_classif:
             self.best_classif = f1_classif["total"]
             self.net.save(self.save_dir / "model_best_classif.pth")
+        if f1_kp_reg > self.best_kp_reg:
+            self.best_kp_reg = f1_kp_reg
+            self.net.save(self.save_dir / "model_best_kp_reg.pth")
 
         # Draw metrics to Tensorboard
         self.writer.add_scalars("Loss/Validation", loss_stats.__dict__, self.global_step)
+        self.writer.add_scalars("Metrics_AllKps/Precison", kps_prec, self.global_step)
+        self.writer.add_scalars("Metrics_AllKps/Recall", kps_rec, self.global_step)
+        self.writer.add_scalars("Metrics_AllKps/F1", kps_f1, self.global_step)
         self.writer.add_scalars("Metrics_Anchor/Precision", anchor_prec, self.global_step)
         self.writer.add_scalars("Metrics_Anchor/Recall", anchor_rec, self.global_step)
         self.writer.add_scalars("Metrics_Anchor/f1", anchor_f1, self.global_step)

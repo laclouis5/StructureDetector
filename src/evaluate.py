@@ -35,4 +35,3 @@ if __name__ == "__main__":
 
     evaluator.pretty_print()
     # evaluator.classification_eval.reduce().save_conf_matrix()
-    (evaluator.anchor_eval | evaluator.part_eval).pretty_print(table_name="All Keypoints")

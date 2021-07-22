@@ -135,10 +135,9 @@ class Evaluations:
 
     def __or__(self, other):
         output = Evaluations()
-        output.evals =  \
-            {label: self[label] + other[label] for label in self.labels & other.labels} \
-            | {label: self[label] for label in self.labels - other.labels} \
-            | {label: other[label] for label in other.labels - self.labels}
+        output.evals = {label: self[label] + other[label] for label in self.labels & other.labels}
+        output.evals.update({label: self[label] for label in self.labels - other.labels})
+        output.evals.update({label: other[label] for label in other.labels - self.labels})
         return output
 
     def __ior__(self, other):
@@ -179,6 +178,10 @@ class Evaluator:
         self.part_eval = Evaluations(self.kp_labels)
         self.csi_eval = Evaluations(self.labels)
         self.classification_eval = Evaluations(Evaluator.get_classification_labels())
+
+    @property
+    def kps_eval(self):
+        return self.anchor_eval | self.part_eval
 
     def accumulate(self, prediction, annotation, part_heatmap=None, eval_csi=False, eval_classif=False):
         self.anchor_eval += self.eval_anchor(prediction, annotation)
@@ -482,7 +485,8 @@ class Evaluator:
     def pretty_print(self):
         results = {
             "Anchor Location": self.anchor_eval, "Part Location": self.part_eval, 
-            "CSI": self.csi_eval, "Classification": self.classification_eval}
+            "All Kps Location": self.kps_eval, "CSI": self.csi_eval, 
+            "Classification": self.classification_eval}
 
         for title, evals in results.items():
             table = Table(Column("Label", style="bold"), *Evaluation.columns(), title=title)
@@ -498,8 +502,9 @@ class Evaluator:
 
     def __repr__(self):
         results = {
-            "Anchor Location": self.anchor_eval, "Part Location": self.part_eval, 
-            "CSI": self.csi_eval, "Classification": self.classification_eval}
+            "Anchor Location": self.anchor_eval, "Part Location": self.part_eval,
+            "All Kps Location": self.kps_eval, "CSI": self.csi_eval, 
+            "Classification": self.classification_eval}
 
         description = ""
         for (metric_name, evaluations) in results.items():
