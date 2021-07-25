@@ -136,7 +136,7 @@ class Evaluations:
 
     def __iadd__(self, other):
         assert self.labels == other.labels, "The Evaluations should have the same labels"
-        for (label, evaluation) in other.items():
+        for label, evaluation in other.items():
             self.evals[label] += evaluation
         return self
 
@@ -153,7 +153,7 @@ class Evaluations:
         return self
 
     def reduce(self):
-        return reduce(lambda e1, e2: e1 + e2, self.evals.values(), Evaluation())
+        return reduce(Evaluation.__iadd__, self.evals.values(), Evaluation())
 
     def pretty_print(self, table_name=None):
         table = Table("Label", *Evaluation.columns(), title=table_name)
