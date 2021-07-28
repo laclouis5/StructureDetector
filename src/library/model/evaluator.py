@@ -9,6 +9,8 @@ from rich.table import Table, Column
 class Evaluation:
 
     def __init__(self, tp=0, npos=0, ndet=0, acc=None, counts=None):
+        Evaluation._precondition(tp, npos, ndet)
+
         self.tp = tp
         self.npos = npos  
         self.ndet = ndet
@@ -101,6 +103,12 @@ class Evaluation:
             for _, p, e in count_errors:
                 conf_mat[e, p] += 1
             np.save(f"conf_mat_{label}.npy", conf_mat)
+
+    @staticmethod
+    def _precondition(tp, npos, ndet):
+        assert tp >= 0 and ndet >= 0 and npos >= 0, "tp, npos and ndet should be positive"
+        assert tp <= ndet, "tp must be lower than or equal to ndet"
+        assert tp <= npos, "tp must be lower than or equal to npos"
 
 
 class Evaluations:
