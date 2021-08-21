@@ -4,6 +4,7 @@ import sys
 from functools import reduce
 from rich import print as rprint
 from rich.table import Table, Column
+from copy import copy
 
 
 class Evaluation:
@@ -18,19 +19,7 @@ class Evaluation:
         self.count_errors = counts or []
 
     def reset(self):
-        self.tp = 0
-        self.npos = 0  
-        self.ndet = 0
-        self.acc = []
-        self.count_errors = []
-
-    def __add__(self, other):
-        return Evaluation(
-            self.tp + other.tp,
-            self.npos + other.npos,
-            self.ndet + other.ndet,
-            self.acc + other.acc,
-            self.count_errors + other.count_errors)
+        self.__init__()
 
     def __iadd__(self, other):
         self.tp += other.tp
@@ -39,6 +28,11 @@ class Evaluation:
         self.acc += other.acc
         self.count_errors += other.count_errors
         return self
+
+    def __add__(self, other):
+        copy_ = copy(self)
+        copy_ += other
+        return copy_
 
     @property
     def fp(self):
