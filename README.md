@@ -22,17 +22,17 @@ pip install -r requirements.txt
 ```
 
 # Reproduce Our Results
-Put the validation dataset in `database/valid/` at the root directory of the repo and download the trained network.
-
-Execute this command:
+Put the validation dataset in `database/valid/` at the root directory of the repo, download the network and put it at the root directory, then execute this command:
 
 ```zsh
-python sources/evaluate.py --valid_dir database/valid/ --load_model model_best_classif.pth --anchor_name stem --conf_threshold 0.529 --decoder_dist_thresh 0.108
+python src/evaluate.py --valid_dir database/valid --load_model model_best_classif.pth --anchor_name stem --conf_threshold 0.5 --decoder_dist_thresh 0.1 --dist_threshold 0.05
 ```
+
+This should reproduce the results of our paper up to some small error margin depending on the hardware.
 
 # Train Your Own Model
 ## Annotation
-Each image should have its corresponding annotation in the same folder, with the same name. The annotation is store in JSON format with the following sructure:
+Each image should have its corresponding annotation in the same folder, with the same name. The annotation is store in JSON format with the following structure:
 
 ```json
 {
