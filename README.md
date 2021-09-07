@@ -22,10 +22,12 @@ pip install -r requirements.txt
 ```
 
 # Reproduce Our Results
+The dataset is currently private but will eventually be released in a dedicated paper. However, before this publication, one can ask the validation dataset to the contact address in order to reproduce our results.
+
 Put the validation dataset in `database/valid/` at the root directory of the repo, download the network and put it at the root directory, then execute this command:
 
 ```zsh
-python src/evaluate.py --valid_dir database/valid --load_model model_best_classif.pth --anchor_name stem --conf_threshold 0.5 --decoder_dist_thresh 0.1 --dist_threshold 0.05
+python src/evaluate.py --valid_dir database/valid --load_model model_best_classif.pth --anchor_name stem --conf_threshold 0.4 --decoder_dist_thresh 0.1 --dist_threshold 0.05
 ```
 
 This should reproduce the results of our paper up to some small error margin depending on the hardware.
