@@ -18,8 +18,8 @@ class Decoder:
     # output: (B, M+N+4, H/R, W/R), see network.py
     def __call__(self, outputs, conf_thresh=None, dist_thresh=None, return_metadata=False):
         # sourcery no-metrics
-        conf_thresh = conf_thresh or self.args.conf_threshold
-        dist_thresh = dist_thresh or self.args.decoder_dist_thresh
+        conf_thresh = conf_thresh if conf_thresh is not None else self.args.conf_threshold
+        dist_thresh = dist_thresh if dist_thresh is not None else self.args.decoder_dist_thresh
 
         out_h, out_w = outputs["anchor_hm"].shape[2:]  # H/R, W/R
         in_h, in_w = int(self.down_ratio * out_h), int(self.down_ratio * out_w)  # H, W
