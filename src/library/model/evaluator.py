@@ -131,7 +131,8 @@ class Evaluations:
     def __add__(self, other):
         assert self.labels == other.labels, "The Evaluations should have the same labels"
         evaluations = Evaluations()
-        evaluations.evals = {label: self.evals[label] + evaluation for (label, evaluation) in other.items()}
+        evaluations.evals = {label: self.evals[label] + evaluation 
+            for label, evaluation in other.items()}
         return evaluations
 
     def __iadd__(self, other):
@@ -142,14 +143,19 @@ class Evaluations:
 
     def __or__(self, other):
         output = Evaluations()
-        output.evals = {label: self[label] + other[label] for label in self.labels & other.labels}
-        output.evals.update({label: self[label] for label in self.labels - other.labels})
-        output.evals.update({label: other[label] for label in other.labels - self.labels})
+        output.evals = {label: self[label] + other[label] 
+            for label in self.labels & other.labels}
+        output.evals.update({label: self[label] 
+            for label in self.labels - other.labels})
+        output.evals.update({label: other[label] 
+            for label in other.labels - self.labels})
         return output
 
     def __ior__(self, other):
-        self |= {label: other[label] for label in other.labels - self.labels}
-        self |= {label: self[label] + other[label] for label in self.labels & other.labels}
+        self |= {label: other[label] 
+            for label in other.labels - self.labels}
+        self |= {label: self[label] + other[label] 
+            for label in self.labels & other.labels}
         return self
 
     def reduce(self):
@@ -167,7 +173,8 @@ class Evaluations:
         description = ""
         if len(self) > 1:
             description += f"total: {self.reduce()}\n"
-        description += "\n".join((f"{label}: {evaluation}" for (label, evaluation) in self.items()))
+        description += "\n".join(
+            f"{label}: {evaluation}" for (label, evaluation) in self.items())
         return description
 
 
@@ -202,6 +209,7 @@ class Evaluator:
 
     def eval_anchor(self, prediction, annotation):
         img_size = annotation.img_size
+
         annotation = annotation.resized(
             (self.args.width, self.args.height),
             img_size)
@@ -209,9 +217,7 @@ class Evaluator:
             (self.args.width, self.args.height),
             img_size)
 
-        (img_w, img_h) = img_size
-        dist_thresh = min(img_w, img_h) * self.args.dist_threshold
-
+        dist_thresh = min(img_size) * self.args.dist_threshold
         preds = dict_grouping(prediction.objects, key=lambda obj: obj.name)
         gts = dict_grouping(annotation.objects, key=lambda obj: obj.name)
 
@@ -225,14 +231,15 @@ class Evaluator:
             res.ndet = len(preds_label)
             res.npos = len(gts_label)
 
-            preds_label = sorted(preds_label, key=lambda obj: obj.anchor.score, reverse=True)
+            preds_label = sorted(preds_label, 
+                key=lambda obj: obj.anchor.score, reverse=True)
             visited = np.repeat(False, len(gts_label))
 
             for pred in preds_label:
                 min_dist = sys.float_info.max
                 j_min = None
 
-                for (j, gt) in enumerate(gts_label):
+                for j, gt in enumerate(gts_label):
                     dist = pred.distance(gt)
                     if dist < min_dist:
                         min_dist = dist
@@ -241,7 +248,7 @@ class Evaluator:
                 if min_dist < dist_thresh and not visited[j_min]:
                     visited[j_min] = True
                     res.tp += 1
-                    res.acc.append(min_dist / min(img_w, img_h))
+                    res.acc.append(min_dist / min(img_size))
 
         return result
 
@@ -252,10 +259,10 @@ class Evaluator:
             (self.args.width, self.args.height),
             img_size)
 
-        part_heatmap = (kp.resized((self.args.width, self.args.height), img_size) for kp in part_heatmap)
+        part_heatmap = (kp.resized((self.args.width, self.args.height), img_size) 
+            for kp in part_heatmap)
 
-        (img_w, img_h) = img_size
-        dist_thresh = min(img_w, img_h) * self.args.dist_threshold
+        dist_thresh = min(img_size) * self.args.dist_threshold
 
         preds = dict_grouping(part_heatmap, key=lambda kp: kp.kind)
         gts = (kp for obj in annotation.objects for kp in obj.parts)
@@ -281,7 +288,7 @@ class Evaluator:
                 min_dist_kp = sys.float_info.max
                 j_min_kp = None
 
-                for (l, gt_kp) in enumerate(gts_kp_label):
+                for l, gt_kp in enumerate(gts_kp_label):
                     dist_kp = pred_kp.distance(gt_kp)
 
                     if dist_kp < min_dist_kp:
@@ -291,7 +298,7 @@ class Evaluator:
                 if min_dist_kp < dist_thresh and not visited_kp[j_min_kp]:
                     visited_kp[j_min_kp] = True
                     res_kp.tp += 1
-                    res_kp.acc.append(min_dist_kp / min(img_w, img_h))
+                    res_kp.acc.append(min_dist_kp / min(img_size))
 
         return kp_result
 
@@ -304,8 +311,7 @@ class Evaluator:
             (self.args.width, self.args.height),
             img_size)
 
-        (img_w, img_h) = img_size
-        dist_thresh = min(img_w, img_h) * self.args.dist_threshold
+        dist_thresh = min(img_size) * self.args.dist_threshold
 
         preds = dict_grouping(prediction.objects, key=lambda obj: obj.name)
         gts = dict_grouping(annotation.objects, key=lambda obj: obj.name)
@@ -320,14 +326,15 @@ class Evaluator:
             res.ndet = len(preds_label)
             res.npos = len(gts_label)
 
-            preds_label = sorted(preds_label, key=lambda obj: obj.anchor.score, reverse=True)
+            preds_label = sorted(preds_label,
+                key=lambda obj: obj.anchor.score, reverse=True)
             visited = np.repeat(False, len(gts_label))
 
             for pred in preds_label:
                 best_csi = 0.0
                 idx_best = None
 
-                for (j, gt) in enumerate(gts_label):
+                for j, gt in enumerate(gts_label):
                     csi = Evaluator.compute_csi(pred, gt, dist_thresh)
                     if csi > best_csi:
                         best_csi = csi
@@ -357,8 +364,10 @@ class Evaluator:
         img_w, img_h = img_size
         dist_thresh = min(img_w, img_h) * self.args.dist_threshold
 
-        preds = dict_grouping(prediction.objects, key=lambda obj: f"{obj.name}_{obj.nb_parts}")
-        gts = dict_grouping(annotation.objects, key=lambda obj: f"{obj.name}_{obj.nb_parts}")
+        preds = dict_grouping(prediction.objects, 
+            key=lambda obj: f"{obj.name}_{obj.nb_parts}")
+        gts = dict_grouping(annotation.objects, 
+            key=lambda obj: f"{obj.name}_{obj.nb_parts}")
         labels = Evaluator.get_classification_labels()
         result = Evaluations(labels)
 
@@ -399,8 +408,7 @@ class Evaluator:
             (self.args.width, self.args.height),
             img_size)
 
-        img_w, img_h = img_size
-        dist_thresh = min(img_w, img_h) * self.args.dist_threshold
+        dist_thresh = min(img_size) * self.args.dist_threshold
 
         preds = dict_grouping(prediction.objects, key=lambda obj: f"{obj.name}_{obj.nb_parts}")
         _gts = dict_grouping(annotation.objects, key=lambda obj: f"{obj.name}_{obj.nb_parts}")
@@ -442,7 +450,7 @@ class Evaluator:
 
                 visited[idx_best] = True
                 res.tp += 1
-                res.acc.append(best_dist / min(img_w, img_h))
+                res.acc.append(best_dist / min(img_size))
                 res.count_errors.append((label, pred.nb_parts, gts[idx_best].nb_parts))
 
         return result
@@ -476,7 +484,7 @@ class Evaluator:
                 min_dist_kp = sys.float_info.max
                 j_min_kp = None
 
-                for (j, gt_kp) in enumerate(gts_kp_label):
+                for j, gt_kp in enumerate(gts_kp_label):
                     dist_kp = pred_kp.distance(gt_kp)
 
                     if dist_kp < min_dist_kp:
