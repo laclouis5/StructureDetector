@@ -4,11 +4,14 @@ import sys
 from functools import reduce
 from rich import print as rprint
 from rich.table import Table, Column
+from copy import copy
 
 
 class Evaluation:
 
     def __init__(self, tp=0, npos=0, ndet=0, acc=None, counts=None):
+        Evaluation._precondition(tp, npos, ndet)
+
         self.tp = tp
         self.npos = npos  
         self.ndet = ndet
@@ -16,19 +19,7 @@ class Evaluation:
         self.count_errors = counts or []
 
     def reset(self):
-        self.tp = 0
-        self.npos = 0  
-        self.ndet = 0
-        self.acc = []
-        self.count_errors = []
-
-    def __add__(self, other):
-        return Evaluation(
-            self.tp + other.tp,
-            self.npos + other.npos,
-            self.ndet + other.ndet,
-            self.acc + other.acc,
-            self.count_errors + other.count_errors)
+        self.__init__()
 
     def __iadd__(self, other):
         self.tp += other.tp
@@ -37,6 +28,11 @@ class Evaluation:
         self.acc += other.acc
         self.count_errors += other.count_errors
         return self
+
+    def __add__(self, other):
+        copy_ = copy(self)
+        copy_ += other
+        return copy_
 
     @property
     def fp(self):
@@ -102,6 +98,12 @@ class Evaluation:
                 conf_mat[e, p] += 1
             np.save(f"conf_mat_{label}.npy", conf_mat)
 
+    @staticmethod
+    def _precondition(tp, npos, ndet):
+        assert tp >= 0 and ndet >= 0 and npos >= 0, "tp, npos and ndet should be positive"
+        assert tp <= ndet, "tp must be lower than or equal to ndet"
+        assert tp <= npos, "tp must be lower than or equal to npos"
+
 
 class Evaluations:
 
@@ -137,7 +139,7 @@ class Evaluations:
 
     def __iadd__(self, other):
         assert self.labels == other.labels, "The Evaluations should have the same labels"
-        for (label, evaluation) in other.items():
+        for label, evaluation in other.items():
             self.evals[label] += evaluation
         return self
 
@@ -159,7 +161,7 @@ class Evaluations:
         return self
 
     def reduce(self):
-        return reduce(lambda e1, e2: e1 + e2, self.evals.values(), Evaluation())
+        return reduce(Evaluation.__iadd__, self.evals.values(), Evaluation())
 
     def pretty_print(self, table_name=None):
         table = Table("Label", *Evaluation.columns(), title=table_name)

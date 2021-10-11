@@ -6,6 +6,7 @@ runs/
 .vscode/
 *.npy
 tmp/
+*grid_search*
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

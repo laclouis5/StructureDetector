@@ -22,17 +22,19 @@ pip install -r requirements.txt
 ```
 
 # Reproduce Our Results
-Put the validation dataset in `database/valid/` at the root directory of the repo and download the trained network.
+The dataset is currently private but will eventually be released in a dedicated paper. However, before this publication, one can ask the validation dataset to the contact address in order to reproduce our results.
 
-Execute this command:
+Put the validation dataset in `database/valid/` at the root directory of the repo, download the network and put it at the root directory, then execute this command:
 
 ```zsh
-python sources/evaluate.py --valid_dir database/valid/ --load_model model_best_classif.pth --anchor_name stem --conf_threshold 0.529 --decoder_dist_thresh 0.108
+python src/evaluate.py --valid_dir database/valid --load_model model_best_classif.pth --anchor_name stem --conf_threshold 0.4 --decoder_dist_thresh 0.1 --dist_threshold 0.05
 ```
+
+This should reproduce the results of our paper up to some small error margin depending on the hardware.
 
 # Train Your Own Model
 ## Annotation
-Each image should have its corresponding annotation in the same folder, with the same name. The annotation is store in JSON format with the following sructure:
+Each image should have its corresponding annotation in the same folder, with the same name. The annotation is store in JSON format with the following structure:
 
 ```json
 {
@@ -79,7 +81,7 @@ You should also update the `label.json` file with the names of your labels and p
 For annotating crops you can use [this repo](https://github.com/laclouis5/StructureAnnotator) or adapt it to your needs.
 
 ## Training
-Split your dataset into two folders: one for training and the other for validation. Optionnaly launch TensorBoard to monitor training (use a secondary shell):
+Split your dataset into two folders: one for training and the other for validation. Optionally launch TensorBoard to monitor training (use a secondary shell):
 ```zsh
 tensorboard --logdir runs
 ```
@@ -89,7 +91,7 @@ Launch training with:
 python sources/train.py --train_dir train_dir/ --valid_dir valid_dir/
 ```
 
-Customize training (epochs, learning rate, ...) by specifying options in the command line arguments. help is available:
+Customize training (epochs, learning rate, ...) by specifying options in the command line arguments. Help is available:
 ```zsh
 python sources/train.py -h
 ```
