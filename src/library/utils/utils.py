@@ -227,6 +227,10 @@ class ImageAnnotation:
     def image_name(self):
         return self.image_path.name
 
+    @property
+    def image_stem(self):
+        return self.image_path.stem
+
     def normalize(self, size=None):
         size = size or self.img_size
         assert size, f"Annotation for '{self.image_path}' does not have a size."
