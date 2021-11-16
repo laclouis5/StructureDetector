@@ -6,7 +6,7 @@ import torch
 if __name__ == "__main__":
     args = args = Arguments().parse()
 
-    dataset = PredictionDataset(args, args.valid_dir, PredictionTransformation(args))
+    dataset = PredictionDataset(args.valid_dir, PredictionTransformation(args))
     dataloader = torch.utils.data.DataLoader(dataset,
         batch_size=1,
         pin_memory=args.use_cuda,

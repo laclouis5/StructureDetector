@@ -75,10 +75,36 @@ class CropDataset(data.Dataset):
 
         return description
 
+    def histogram(self):
+        import altair as alt
+        import pandas as pd
+
+        data = []
+        for file in self.files:
+            annotation = ImageAnnotation.from_json(file, self.args.anchor_name)
+            for obj in annotation.objects:
+                data.append({"label": obj.name, "leaves": obj.nb_parts})
+        
+        df = pd.DataFrame(data)
+        mf = df[df.label == "maize"]
+        bf = df[df.label == "bean"]
+
+        maize_chart = alt.Chart(mf, width=600, height=400).mark_rect().encode(
+            alt.X("leaves:O", title="Nombre de feuilles"),
+            alt.Y("count()", title="Nombre de plantes"),
+        )
+
+        bean_chart = alt.Chart(bf, width=600, height=400).mark_rect().encode(
+            alt.X("leaves:O", title="Nombre de feuilles"),
+            alt.Y("count()", title="Nombre de plantes"),
+        )
+
+        (maize_chart | bean_chart).show()
+
 
 class PredictionDataset(data.Dataset):
 
-    def __init__(self, args, directory, transform=None):
+    def __init__(self, directory, transform=None):
         self.images = sorted(files_with_extension(directory, ".jpg"))
         self.transform = transform
 
