@@ -3,7 +3,7 @@ import torch
 from tqdm import tqdm
 
 
-if __name__ == "__main__":
+def main():
     args = Arguments().parse()
     assert args.valid_dir, "Path to a directory with validation samples must be specified."
     assert args.pretrained_model, "No pretrained model specified. Use the option '--load_model <model_path>'."
@@ -36,3 +36,7 @@ if __name__ == "__main__":
 
     evaluator.pretty_print()
     # evaluator.classification_eval.reduce().save_conf_matrix()
+
+
+if __name__ == "__main__":
+    main()

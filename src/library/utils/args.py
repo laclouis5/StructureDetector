@@ -31,7 +31,7 @@ class Arguments:
         parser.add_argument("--epochs", "-e", type=int, default=100,
             help="The number of epochs to train.")
         parser.add_argument("--no_augmentation", "-a", action="store_true",
-            help="Useth augmentations during training (random LR flip, random color change, random rescale, ...).")
+            help="Activate augmentations during training (random LR flip, random color change, random rescale, ...).")
         parser.add_argument("--learning_rate", "-l", type=float, default=1e-3,
             help="The learning rate for training.")
         parser.add_argument("--lr_step", type=int, default=3, 

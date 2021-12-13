@@ -438,4 +438,5 @@ def dict_grouping(iterable, key):
 
 
 def get_unique_color_map(labels):
+    """(╯°□°)╯︵ ┻━hash()━┻"""
     return {n: (*xxh64_digest(n.encode())[:3],) for n in labels}
