@@ -1,6 +1,7 @@
 from library import *
 from tqdm.contrib import tzip
 import torch
+from PIL import Image
 
 
 if __name__ == "__main__":
@@ -33,4 +34,8 @@ if __name__ == "__main__":
         annotation.img_size = img_size
         annotation.image_path = image_path
 
+        image = Image.open(image_path)
+        image = draw(image, annotation, args)
+
         annotation.save_json("predictions")
+        image.save(Path(f"predictions/{image_path.name}"))

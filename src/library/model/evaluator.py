@@ -201,7 +201,8 @@ class Evaluator:
 
     def accumulate(self, prediction, annotation, part_heatmap=None, eval_csi=False, eval_classif=False):
         self.anchor_eval += self.eval_anchor(prediction, annotation)
-
+        
+        # self.part_eval += self.eval_part_2(prediction, annotation)
         if part_heatmap is not None:
             self.part_eval += self.eval_part(annotation, part_heatmap)
         if eval_csi:
@@ -303,6 +304,55 @@ class Evaluator:
                     res_kp.acc.append(min_dist_kp / min(img_size))
 
         return kp_result
+
+    def eval_part_2(self, prediction, annotation):
+        """Only keeps leaves that have been associated."""
+        img_size = annotation.img_size
+
+        annotation = annotation.resized(
+            (self.args.width, self.args.height),
+            img_size)
+        prediction = prediction.resized(
+            (self.args.width, self.args.height),
+            img_size)
+
+        dist_thresh = min(img_size) * self.args.dist_threshold
+        
+        preds = [part for obj in prediction.objects for part in obj.parts]
+        preds = dict_grouping(preds, key= lambda part: part.kind)
+        gts = [part for obj in annotation.objects for part in obj.parts]
+        gts = dict_grouping(gts, key=lambda part: part.kind)
+
+        result = Evaluations(self.kp_labels)
+
+        for label in self.kp_labels:
+            res = result[label]
+            preds_label = preds.get(label, [])
+            gts_label = gts.get(label, [])
+
+            res.ndet = len(preds_label)
+            res.npos = len(gts_label)
+
+            preds_label = sorted(preds_label, 
+                key=lambda p: p.score, reverse=True)
+            visited = np.repeat(False, len(gts_label))
+
+            for pred in preds_label:
+                min_dist = sys.float_info.max
+                j_min = None
+
+                for j, gt in enumerate(gts_label):
+                    dist = pred.distance(gt)
+                    if dist < min_dist:
+                        min_dist = dist
+                        j_min = j
+
+                if min_dist < dist_thresh and not visited[j_min]:
+                    visited[j_min] = True
+                    res.tp += 1
+                    res.acc.append(min_dist / min(img_size))
+
+        return result
 
     def eval_csi(self, prediction, annotation):
         img_size = annotation.img_size
