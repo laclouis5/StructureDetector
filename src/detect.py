@@ -3,6 +3,8 @@ from tqdm.contrib import tzip
 import torch
 from PIL import Image
 
+from library.utils.visualization import draw_keypoints
+
 
 if __name__ == "__main__":
     args = args = Arguments().parse()
@@ -14,6 +16,8 @@ if __name__ == "__main__":
         num_workers=args.num_workers)
 
     decoder = Decoder(args)
+    # kp_decoder = KeypointDecoder(args)
+
     net = Network(args)
     net.load_state_dict(torch.load(args.pretrained_model, map_location=args.device))
     net = net.to(args.device)
@@ -33,9 +37,12 @@ if __name__ == "__main__":
         annotation.resize((args.width, args.height), img_size)
         annotation.img_size = img_size
         annotation.image_path = image_path
+        # keypoints = kp_decoder(output)[0]
+        # keypoints = [kp.resize((args.width, args.height), img_size) for kp in keypoints]
 
         image = Image.open(image_path)
         image = draw(image, annotation, args)
+        # image = draw_keypoints(image, keypoints, args)
 
         annotation.save_json("predictions")
         image.save(Path(f"predictions/{image_path.name}"))

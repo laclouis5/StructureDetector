@@ -137,7 +137,9 @@ def draw_embeddings(image, embeddings, args):
     
 
 def draw_keypoints(image, keypoints, args):
+    image = image.copy()
     draw = ImageDraw.Draw(image)
+    
     img_w, img_h = image.size
     offset = int(min(img_w, img_h) * 1/100)
 
