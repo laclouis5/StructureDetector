@@ -29,9 +29,9 @@ class Decoder:
         anchor_hm = nms(anchor_hm_sig)  # (B, M, H/R, W/R)
         anchor_scores, anchor_inds, anchor_labels, anchor_ys, anchor_xs = topk(
             anchor_hm, k=self.max_objects)  # (B, K)
-        anchor_offsets = transpose_and_gather(outputs["offsets"], anchor_inds)  # (B, K, 2)
-        anchor_xs += anchor_offsets[..., 0]  # (B, K)
-        anchor_ys += anchor_offsets[..., 1]  # (B, K)
+        # anchor_offsets = transpose_and_gather(outputs["offsets"], anchor_inds)  # (B, K, 2)
+        # anchor_xs += anchor_offsets[..., 0]  # (B, K)
+        # anchor_ys += anchor_offsets[..., 1]  # (B, K)
 
         anchor_out = torch.stack((
             anchor_xs, anchor_ys,
@@ -43,10 +43,10 @@ class Decoder:
         part_hm = nms(part_hm_sig)  # (B, N, H/R, W/R)
         part_scores, part_inds, part_labels, part_ys, part_xs = topk(
             part_hm, k=self.max_parts)  # (B, P)
-        part_offsets = transpose_and_gather(outputs["offsets"], part_inds)  # (B, P, 2)
+        # part_offsets = transpose_and_gather(outputs["offsets"], part_inds)  # (B, P, 2)
         embeddings = transpose_and_gather(outputs["embeddings"], part_inds)  # (B, P, 2)
-        part_xs += part_offsets[..., 0]  # (B, P)
-        part_ys += part_offsets[..., 1]  # (B, P)
+        # part_xs += part_offsets[..., 0]  # (B, P)
+        # part_ys += part_offsets[..., 1]  # (B, P)
         origin_xs = part_xs + embeddings[..., 0]  # (B, P)
         origin_ys = part_ys + embeddings[..., 1]  # (B, P)
 
@@ -156,9 +156,9 @@ class KeypointDecoder:
         anchor_hm = nms(anchor_hm_sig)  # (B, M, H/R, W/R)
         (anchor_scores, anchor_inds, anchor_labels, anchor_ys, anchor_xs) = topk(
             anchor_hm, k=self.max_objects)  # (B, K)
-        anchor_offsets = transpose_and_gather(outputs["offsets"], anchor_inds)  # (B, K, 2)
-        anchor_xs += anchor_offsets[..., 0]  # (B, K)
-        anchor_ys += anchor_offsets[..., 1]  # (B, K)
+        # anchor_offsets = transpose_and_gather(outputs["offsets"], anchor_inds)  # (B, K, 2)
+        # anchor_xs += anchor_offsets[..., 0]  # (B, K)
+        # anchor_ys += anchor_offsets[..., 1]  # (B, K)
 
         anchors = torch.stack((
             anchor_xs * r_w, anchor_ys * r_h,
@@ -170,9 +170,9 @@ class KeypointDecoder:
         part_hm = nms(part_hm_sig)  # (B, N, H/R, W/R)
         (part_scores, part_inds, part_labels, part_ys, part_xs) = topk(
             part_hm, k=self.max_parts)  # (B, P)
-        part_offsets = transpose_and_gather(outputs["offsets"], part_inds)  # (B, P, 2)
-        part_xs += part_offsets[..., 0]  # (B, P)
-        part_ys += part_offsets[..., 1]  # (B, P)
+        # part_offsets = transpose_and_gather(outputs["offsets"], part_inds)  # (B, P, 2)
+        # part_xs += part_offsets[..., 0]  # (B, P)
+        # part_ys += part_offsets[..., 1]  # (B, P)
 
         parts = torch.stack((
             part_xs * r_w, part_ys * r_h,
