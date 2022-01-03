@@ -7,7 +7,7 @@ if __name__ == "__main__":
     args = Arguments().parse()
     assert args.valid_dir, "Path to a directory with validation samples must be specified."
     assert args.pretrained_model, "No pretrained model specified. Use the option '--load_model <model_path>'."
-
+    
     evaluator = Evaluator(args)
     dataset = CropDataset(args, args.valid_dir, ValidationAugmentation(args))
     dataloader = torch.utils.data.DataLoader(dataset,
@@ -36,3 +36,6 @@ if __name__ == "__main__":
 
     evaluator.pretty_print()
     # evaluator.classification_eval.reduce().save_conf_matrix()
+
+    if args.csv_path is not None:
+        evaluator.save_kps_csv(args.csv_path)

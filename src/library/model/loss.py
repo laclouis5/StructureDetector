@@ -34,7 +34,7 @@ class Loss(nn.Module):
             input["embeddings"], target["embeddings"],
             target["part_inds"], target["part_mask"])
 
-        self.stats.update(hm_loss.item(), offset_loss.item(), embeddings_loss.item())
+        self.stats.update(hm_loss, offset_loss, embeddings_loss)
 
         return hm_loss + offset_loss + embeddings_loss
 

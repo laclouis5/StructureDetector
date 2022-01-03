@@ -1,5 +1,6 @@
 import argparse
 import json
+from pathlib import Path
 import torch
 from .utils import get_unique_color_map, set_seed
 
@@ -51,7 +52,7 @@ class Arguments:
             help="Weight for the offset loss.")
         parser.add_argument("--embedding_weight", type=float, default=0.001,
             help="Weight for the embedding loss.")
-        parser.add_argument("--sigma_gauss", type=float, default=5/100,
+        parser.add_argument("--sigma_gauss", type=float, default=10/100,
             help="Size of the gaussian filter used to lay keypoints on heatmaps. Expressed in percent of the image side length.")
 
         parser.add_argument("--conf_threshold", "-t", type=float, default=33/100,
@@ -62,6 +63,8 @@ class Arguments:
             help="Radius in percent of min image length considered for keypoint linkage. Must be in [0, 1].")
         parser.add_argument("--csi_threshold", type=float, default=75/100,
             help="Threshold on the custom CSI metric for evaluation. Must be in [0, 1].")
+
+        parser.add_argument("--save_csv_eval", dest="csv_path", type=Path)
 
         self.parser = parser
 

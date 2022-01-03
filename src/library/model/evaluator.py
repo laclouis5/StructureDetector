@@ -517,6 +517,18 @@ class Evaluator:
             
             rprint(table)
 
+    def _csv_kps_str(self) -> str:
+        content = []
+        evals = self.kps_eval
+        labels = sorted(evals.labels)
+        for label in labels:
+            eval = evals[label]
+            content.append(",".join((label, str(eval.recall), str(eval.precision), str(eval.f1_score), str(eval.avg_acc))))
+        return "\n".join(content)
+
+    def save_kps_csv(self, path: Path):
+        path.write_text(self._csv_kps_str())
+
     def __repr__(self):
         results = {
             "Anchor Location": self.anchor_eval, "Part Location": self.part_eval,
