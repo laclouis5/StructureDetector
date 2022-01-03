@@ -42,7 +42,7 @@ class Network(nn.Module):
 
         resnet = torchvision.models.resnet34(pretrained=pretrained)
 
-        self.adpater = nn.Sequential(resnet.conv1, resnet.bn1, resnet.relu, resnet.maxpool)  # /4
+        self.adpater = nn.Sequential(resnet.conv1, resnet.bn1, resnet.relu, resnet.maxpool)  # /4 -> /4
 
         self.down1 = resnet.layer1  # /1 -> /4
         self.down2 = resnet.layer2  # /2 -> /8

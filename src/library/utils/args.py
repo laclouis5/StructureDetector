@@ -32,7 +32,7 @@ class Arguments:
         parser.add_argument("--epochs", "-e", type=int, default=100,
             help="The number of epochs to train.")
         parser.add_argument("--no_augmentation", "-a", action="store_true",
-            help="Useth augmentations during training (random LR flip, random color change, random rescale, ...).")
+            help="Activate augmentations during training (random LR flip, random color change, random rescale, ...).")
         parser.add_argument("--learning_rate", "-l", type=float, default=1e-3,
             help="The learning rate for training.")
         parser.add_argument("--lr_step", type=int, default=3, 
@@ -55,11 +55,11 @@ class Arguments:
         parser.add_argument("--sigma_gauss", type=float, default=10/100,
             help="Size of the gaussian filter used to lay keypoints on heatmaps. Expressed in percent of the image side length.")
 
-        parser.add_argument("--conf_threshold", "-t", type=float, default=33/100,
+        parser.add_argument("--conf_threshold", "-t", type=float, default=50/100,
             help="Confidence threshold for keypoint detection. Must be in [0, 1].")
-        parser.add_argument("--dist_threshold", "-d", type=float, default=4/100,
+        parser.add_argument("--dist_threshold", "-d", type=float, default=5/100,
             help="Radius in percent of min image length considered for evaluation. Must be in [0, 1].")
-        parser.add_argument("--decoder_dist_thresh", type=float, default=5/100,
+        parser.add_argument("--decoder_dist_thresh", type=float, default=10/100,
             help="Radius in percent of min image length considered for keypoint linkage. Must be in [0, 1].")
         parser.add_argument("--csi_threshold", type=float, default=75/100,
             help="Threshold on the custom CSI metric for evaluation. Must be in [0, 1].")

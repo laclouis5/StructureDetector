@@ -31,10 +31,10 @@ def draw(image, annotation, args, unnorm_image=True):
         for kp in obj.parts:
             kp_color = args._part_color_map[kp.kind]
 
+            draw.line([x, y, kp.x, kp.y],
+                fill="white", width=thickness)
             draw.ellipse([kp.x - offset, kp.y - offset, kp.x + offset, kp.y + offset],
                 fill=kp_color, outline=kp_color)
-            draw.line([x, y, kp.x, kp.y],
-                fill=kp_color, width=thickness)
 
         draw.ellipse([x - offset, y - offset, x + offset, y + offset],
             fill=obj_color, outline=obj_color)
@@ -137,7 +137,9 @@ def draw_embeddings(image, embeddings, args):
     
 
 def draw_keypoints(image, keypoints, args):
+    image = image.copy()
     draw = ImageDraw.Draw(image)
+    
     img_w, img_h = image.size
     offset = int(min(img_w, img_h) * 1/100)
 

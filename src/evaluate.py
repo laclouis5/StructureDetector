@@ -3,7 +3,7 @@ import torch
 from tqdm import tqdm
 
 
-if __name__ == "__main__":
+def main():
     args = Arguments().parse()
     assert args.valid_dir, "Path to a directory with validation samples must be specified."
     assert args.pretrained_model, "No pretrained model specified. Use the option '--load_model <model_path>'."
@@ -39,3 +39,7 @@ if __name__ == "__main__":
 
     if args.csv_path is not None:
         evaluator.save_kps_csv(args.csv_path)
+
+
+if __name__ == "__main__":
+    main()
