@@ -1,7 +1,9 @@
 # Object Structure Detector
+Structure Detector network (SDNet) is a pose estimation network which can detect an arbitrary number of keypoints. It is based on center point detectors such as [CenterNet](https://github.com/xingyizhou/CenterNet).
+
+SDNet is a BMVC 2021 published work : https://www.bmvc2021-virtualconference.com/conference/papers/paper_1278.html.
+
 ![illustration](illustration.png)
- 
-Structure Detector is a pose estimation network which can detect an arbitrary number of keypoints. It is based on center point detectors such as [CenterNet](https://github.com/xingyizhou/CenterNet).
 
 # Installation
 Requirements:
