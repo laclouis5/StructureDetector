@@ -1,5 +1,6 @@
 import copy
 import json
+from typing import Sequence, TypeVar
 import torch
 import numpy as np
 import torch.nn as nn
@@ -216,6 +217,115 @@ class Object:
         return f"Object(name: {self.name}, anchor: {self.anchor}, parts: {self.parts}, box: {self.box})"
 
 
+class Graph:
+
+    def __init__(self, keypoints: Sequence[Keypoint]):
+        self._adjacency: dict[Keypoint, set[Keypoint]] = {kp: set() for kp in keypoints}
+
+    @property
+    def keypoints(self):
+        return self._adjacency.keys()
+
+    @property
+    def nb_keypoints(self) -> int:
+        return len(self._adjacency)
+
+    def neighbors(self, keypoint: Keypoint) -> "set[Keypoint]":
+        assert keypoint in self.keypoints
+        return self._adjacency[keypoint]
+
+    def connect(self, kp1: Keypoint, kp2: Keypoint):
+        assert kp1 in self.keypoints
+        assert kp2 in self.keypoints
+        
+        self._adjacency[kp1].add(kp2)
+        self._adjacency[kp2].add(kp1)
+
+    def add(self, keypoint: Keypoint):
+        assert keypoint not in self.keypoints
+        self._adjacency[keypoint] = set()
+
+    def connected_graphs(self) -> "list[Graph]":
+        connected_components = []
+        visited = set()
+
+        def _dfs(keypoint: Keypoint, connected: "list[Keypoint]"):
+            visited.add(keypoint)
+            connected.append(keypoint)
+
+            for neighbor in self.neighbors(keypoint):
+                if neighbor not in visited:
+                    _dfs(neighbor, connected)
+
+        for keypoint in self.keypoints:
+            if keypoint not in visited:
+                connected = []
+                _dfs(keypoint, connected)
+                connected_components.append(connected)
+
+        graphs = [Graph(connected) for connected in connected_components]
+
+        for graph in graphs:
+            for keypoint in graph.keypoints:
+                for neighbor in self.neighbors(keypoint):
+                    graph.connect(keypoint, neighbor)
+        
+        return graphs
+
+    def resize(self, in_size, out_size) -> "Graph":
+        for keypoint in self.keypoints:
+            keypoint.resize(in_size, out_size)
+        return self
+
+    def resized(self, in_size, out_size) -> "Graph":
+        return copy.deepcopy(self).resize(in_size, out_size)
+
+    def normalize(self, size) -> "Graph":
+        for keypoint in self.keypoints:
+            keypoint.normalize(size)
+        return self
+
+    def normalized(self, size) -> "Graph":
+        return copy.deepcopy(self).normalize(size)
+
+    def json_repr(self) -> dict:
+        inds = {kp: i for i, kp in enumerate(self.keypoints)}
+
+        return {
+            "keypoints": [kp.json_repr() for kp in self.keypoints],
+            "adjacency": [[inds[neighbor] for neighbor in neighbors] 
+                for neighbors in self._adjacency.values()]
+        }
+
+    @staticmethod
+    def from_json_ann(json_obj: dict) -> "Graph":
+        graph = Graph()
+
+        def _dfs(node: dict):
+            value = node["value"]
+            keypoint = Keypoint(kind=value["name"], x=value["x"], y=value["y"])
+            graph.add(keypoint)
+            for child in value["children"]:
+                graph.connect(keypoint, child)
+                _dfs(child)
+
+        _dfs(json_obj["value"])
+
+    @staticmethod
+    def from_json(json_obj: dict) -> "Graph":
+        keypoints = [Keypoint.from_json(kp) for kp in json_obj["keypoints"]]
+        graph = Graph(keypoints)
+        
+        for i, adjacency in enumerate(json_obj["adjacency"]):
+            for j in adjacency:
+                graph.connect(keypoints[i], keypoints[j])
+
+        return graph
+
+    def __repr__(self) -> str:
+        return f"Graph(keypoints: {set(self.keypoints)})"
+
+
 class ImageAnnotation:
 
     def __init__(self, image_path, objects=None, img_size=None):
@@ -286,6 +396,55 @@ class ImageAnnotation:
     @property
     def is_empty(self):
         return len(self) == 0
+
+
+class GraphAnnotation:
+
+    def __init__(self, image_path: Path, graph: Graph, image_size: "tuple[int, int]" = None):
+        self.image_path = image_path
+        self.graph = graph
+        self.image_size = image_size
+
+    @property
+    def image_name(self) -> str:
+        return self.image_path.name
+    
+    def resize(self, in_size, out_size) -> "GraphAnnotation":
+        self.graph.resize(in_size, out_size)
+        return self
+
+    def resized(self, in_size, out_size) -> "GraphAnnotation":
+        return copy.deepcopy(self).resize(in_size, out_size)
+
+    def json_repr(self) -> dict:
+        return {
+            "image_path": f"{self.image_path}",
+            "image_size": self.image_size,
+            "graph": self.graph.json_repr()}
+
+    @staticmethod
+    def _from_json_obj(json_obj: dict) -> "GraphAnnotation":
+        return GraphAnnotation(
+            image_path=Path(json_obj["image_path"]), 
+            graph=Graph.from_json(json_obj["graph"]),
+            image_size=json_obj.get("image_size"))
+
+    @staticmethod
+    def _from_json_ann_obj(json_obj: dict) -> "GraphAnnotation":
+        return GraphAnnotation(
+            image_path=Path(json_obj["image_path"]), 
+            graph=Graph.from_json_ann(json_obj["graph"]),
+            image_size=json_obj.get("image_size"))
+
+    @staticmethod
+    def from_json(file_path: Path) -> "GraphAnnotation":
+        content = json.loads(file_path.read_text())
+        return GraphAnnotation._from_json_obj(content)
+
+    @staticmethod
+    def from_json_ann(file_path: Path) -> "GraphAnnotation":
+        content = json.loads(file_path.read_text())
+        return GraphAnnotation._from_json_ann_obj(content)
 
 
 class AverageMeter:
