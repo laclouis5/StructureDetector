@@ -1,23 +1,24 @@
 import copy
 import json
-from typing import Sequence
+from typing import Callable, Hashable, Sequence, TypeVar
 import torch
 import numpy as np
 import torch.nn as nn
 from collections import defaultdict
 from pathlib import Path
-from xxhash import xxh64_digest
 
+
+Size = tuple[int, int]
 
 class Keypoint:
 
-    def __init__(self, kind, x, y, score=None):
+    def __init__(self, kind: str, x: float, y: float, score: float = None):
         self.kind = kind
         self.x = x
         self.y = y
         self.score = score
 
-    def resize(self, in_size, out_size):
+    def resize(self, in_size: Size, out_size: Size) -> "Keypoint":
         img_w, img_h = in_size
         new_w, new_h = out_size
 
@@ -26,26 +27,26 @@ class Keypoint:
 
         return self
 
-    def resized(self, in_size, out_size):
+    def resized(self, in_size: Size, out_size: Size) -> "Keypoint":
         return copy.deepcopy(self).resize(in_size, out_size)
 
-    def distance(self, other):
+    def distance(self, other: "Keypoint") -> float:
         return np.hypot(self.x - other.x, self.y - other.y)
 
-    def normalize(self, size):
+    def normalize(self, size: Size) -> "Keypoint":
         w, h = size
         self.x /= w
         self.y /= h
         return self
 
-    def normalized(self, size):
+    def normalized(self, size: Size) -> "Keypoint":
         return copy.deepcopy(self).normalize(size)
 
-    def json_repr(self):
+    def json_repr(self) -> dict:
         return {"kind": self.kind, "location": {"x": self.x, "y": self.y}, "score": self.score}
 
     @staticmethod
-    def from_json(json_dict):
+    def from_json(json_dict: dict) -> "Keypoint":
         kind = json_dict["kind"]
         location = json_dict["location"]
         (x, y) = location["x"], location["y"]
@@ -53,168 +54,8 @@ class Keypoint:
 
         return Keypoint(kind, x, y, score)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"Keypoint(kind: {self.kind}, x: {self.x}, y: {self.y}, score: {self.score})"
-
-
-class Box:
-
-    def __init__(self, x_min, y_min, x_max, y_max):
-        self.x_min = x_min
-        self.y_min = y_min
-        self.x_max = x_max
-        self.y_max = y_max
-
-    @property
-    def x_mid(self):
-        return (self.x_max + self.x_min) / 2
-    
-    @property
-    def y_mid(self):
-        return (self.y_max + self.y_min) / 2
-
-    @property
-    def width(self):
-        return abs(self.x_max - self.x_min)
-    
-    @property
-    def height(self):
-        return abs(self.y_max - self.y_min)
-
-    def resize(self, in_size, out_size):
-        iw, ih = in_size
-        ow, oh = out_size
-        rw, rh = ow / iw, oh / ih
-        self.x_min *= rw
-        self.y_min *= rh
-        self.x_max *= rw
-        self.y_max *= rh
-        return self
-
-    def resized(self, in_size, out_size):
-        return copy.deepcopy(self).reize(in_size, out_size)
-
-    def normalize(self, size):
-        self.x_min /= size[0]
-        self.y_min /= size[1]
-        self.x_max /= size[0]
-        self.y_max /= size[1]
-        return self
-
-    def normalized(self, size):
-        return copy.deepcopy(self).normalize(size)
-
-    def yolo_coords(self, size):
-        return self.x_mid / size[0], self.y_mid / size[1], self.width / size[0], self.height / size[1]
-
-    def standardize(self):
-        if self.x_min > self.x_max:
-            self.x_min, self.x_max = self.x_max, self.x_min
-        if self.y_min > self.y_max:
-            self.y_min, self.y_max = self.y_max, self.y_min
-        return self
-
-    def standardized(self):
-        return copy.deepcopy(self).standardize()
-
-    def json_repr(self):
-        return {"x_min": self.x_min, "y_min": self.y_min, "x_max": self.x_max, "y_max": self.y_max}
-
-    @staticmethod
-    def from_json(json_dict):
-        if json_dict is None:
-            return None 
-        x_min, y_min, x_max, y_max = json_dict["x_min"], json_dict["y_min"], json_dict["x_max"], json_dict["y_max"]
-        return Box(x_min, y_min, x_max, y_max)
-
-    def __repr__(self):
-        return f"Box(x_min: {self.x_min}, y_min: {self.y_min}, x_max: {self.x_max}, y_max: {self.y_max})"
-
-
-class Object:
-
-    def __init__(self, name, anchor, parts=None, box=None):
-        self.name = name
-        self.anchor = anchor
-        self.parts = parts or []
-        self.box = box
-
-    @property
-    def x(self):
-        return self.anchor.x
-
-    @property
-    def y(self):
-        return self.anchor.y
-
-    @x.setter
-    def x(self, new_value):
-        self.anchor.x = new_value
-
-    @y.setter
-    def y(self, new_value):
-        self.anchor.y = new_value
-
-    def resize(self, in_size, out_size):
-        self.anchor.resize(in_size, out_size)
-
-        if self.box is not None:
-            self.box.resize(in_size, out_size)
-
-        for part in self.parts:
-            part.resize(in_size, out_size)
-
-        return self
-
-    def resized(self, in_size, out_size):
-        return copy.deepcopy(self).resize(in_size, out_size)
-
-    def distance(self, other):
-        return self.anchor.distance(other.anchor)
-
-    def normalize(self, size):
-        self.anchor.normalize(size)
-        if self.box is not None: 
-            self.box.normalize(size)
-
-        for part in self.parts:
-            part.normalize(size)
-
-        return self
-
-    def normalized(self, size):
-        return copy.deepcopy(self).normalize(size)
-
-    def json_repr(self):
-        parts = [self.anchor.json_repr()]
-        parts += (part.json_repr() for part in self.parts)
-        box = self.box.json_repr() if self.box else None
-        return {"label": self.name, "box": box, "parts": parts}
-
-    @staticmethod
-    def from_json(json_dict, anchor_name):
-        name = json_dict["label"]
-        box = Box.from_json(json_dict["box"])
-        anchor = None
-        parts = []
-
-        for part in json_dict["parts"]:
-            part = Keypoint.from_json(part)
-            if part.kind == anchor_name:
-                assert anchor is None, f"More than one anchor found for object, achor must be unique."
-                anchor = part
-            else:
-                parts.append(part)
-
-        assert anchor is not None, f"Anchor part with name '{anchor_name}' not found while decoding JSON file."
-        return Object(name, anchor, parts, box)
-
-    @property
-    def nb_parts(self):
-        return len(self.parts)
-
-    def __repr__(self):
-        return f"Object(name: {self.name}, anchor: {self.anchor}, parts: {self.parts}, box: {self.box})"
 
 
 class Graph:
@@ -272,20 +113,20 @@ class Graph:
         
         return graphs
 
-    def resize(self, in_size, out_size) -> "Graph":
+    def resize(self, in_size: Size, out_size: Size) -> "Graph":
         for keypoint in self.keypoints:
             keypoint.resize(in_size, out_size)
         return self
 
-    def resized(self, in_size, out_size) -> "Graph":
+    def resized(self, in_size: Size, out_size: Size) -> "Graph":
         return copy.deepcopy(self).resize(in_size, out_size)
 
-    def normalize(self, size) -> "Graph":
+    def normalize(self, size: Size) -> "Graph":
         for keypoint in self.keypoints:
             keypoint.normalize(size)
         return self
 
-    def normalized(self, size) -> "Graph":
+    def normalized(self, size: Size) -> "Graph":
         return copy.deepcopy(self).normalize(size)
 
     def json_repr(self) -> dict:
@@ -326,78 +167,6 @@ class Graph:
         return f"Graph(keypoints: {set(self.keypoints)})"
 
 
-class ImageAnnotation:
-
-    def __init__(self, image_path, objects=None, img_size=None):
-        self.image_path = Path(image_path)
-        self.objects = objects or []
-        self.img_size = img_size
-
-    @property
-    def image_name(self):
-        return self.image_path.name
-
-    @property
-    def image_stem(self):
-        return self.image_path.stem
-
-    def normalize(self, size=None):
-        size = size or self.img_size
-        assert size, f"Annotation for '{self.image_path}' does not have a size."
-
-        for obj in self.objects:
-            obj.normalize(size)
-
-        return self
-        
-    def normalized(self, size=None):
-        return copy.deepcopy(self).normalize(size)
-
-    @staticmethod
-    def from_json(file, anchor_name):
-        data = json.load(open(file))
-        image_path = Path(data["image_path"])
-        img_size = data.get("img_size", None)
-        objects = [Object.from_json(obj, anchor_name) for obj in data["objects"]]
-
-        return ImageAnnotation(image_path, objects, img_size)
-
-    def json_repr(self):
-        return {
-            "image_path": str(self.image_path.expanduser().resolve()),
-            "img_size": self.img_size,
-            "objects": [obj.json_repr() for obj in self.objects],
-        }
-
-    def save_json(self, save_dir=None):
-        save_dir = Path(save_dir or "detections/")
-        mkdir_if_needed(save_dir)
-        save_name = save_dir / self.image_path.with_suffix(".json").name
-        save_name.write_text(json.dumps(self.json_repr(), indent=2))
-
-    def __repr__(self):
-        return f"ImageAnnotation(name: {self.image_name}, objects: {self.objects}, img_size: {self.img_size})"
-
-    def __len__(self):
-        return len(self.objects)
-
-    @property
-    def nb_parts(self):
-        return sum(obj.nb_parts for obj in self.objects)
-
-    def resize(self, in_size, out_size):
-        for obj in self.objects:
-            obj.resize(in_size, out_size)
-        return self
-
-    def resized(self, in_size, out_size):
-        return copy.deepcopy(self).resize(in_size, out_size)
-
-    @property
-    def is_empty(self):
-        return len(self) == 0
-
-
 class GraphAnnotation:
 
     def __init__(self, image_path: Path, graph: Graph, image_size: "tuple[int, int]" = None):
@@ -409,12 +178,21 @@ class GraphAnnotation:
     def image_name(self) -> str:
         return self.image_path.name
     
-    def resize(self, in_size, out_size) -> "GraphAnnotation":
+    def resize(self, in_size: Size, out_size: Size) -> "GraphAnnotation":
         self.graph.resize(in_size, out_size)
         return self
 
-    def resized(self, in_size, out_size) -> "GraphAnnotation":
+    def resized(self, in_size: Size, out_size: Size) -> "GraphAnnotation":
         return copy.deepcopy(self).resize(in_size, out_size)
+
+    def flip_lr(self, size: Size) -> "Graph":
+        img_w, _ = size
+        for keypoint in self.keypoints:
+            keypoint.x = img_w - keypoint.x - 1
+        return self
+
+    def fliped_lr(self, size: Size) -> "Graph":
+        return copy.deepcopy(self).flip_lr(size)
 
     def json_repr(self) -> dict:
         return {
@@ -464,11 +242,12 @@ class AverageMeter:
         return self.avg
 
 
-def files_with_extension(folder, extension):
-    return [f for f in Path(folder).iterdir() if f.suffix == extension]
+def files_with_extension(folder: Path, extension: str, recursive: bool = False) -> Sequence[Path]:
+    extension = extension if extension.startswith(".") else f".{extension}"
+    return folder.rglob(f"*{extension}") if recursive else folder.glob(f"*{extension}")
 
 
-def mkdir_if_needed(directory):
+def mkdir_if_needed(directory: Path):
     Path(directory).mkdir(exist_ok=True)
 
 
@@ -479,13 +258,13 @@ def set_seed(seed="1975846251"):
 
 
 # feat: (B, J, C), ind: (B, N)
-def gather(feat: torch.Tensor, ind: torch.Tensor):
+def gather(feat: torch.Tensor, ind: torch.Tensor) -> torch.Tensor:
     ind = ind.unsqueeze(-1).expand(-1, -1, feat.size(2))  #  (B, N, C)
     return feat.gather(1, ind) # (B, N, C)
 
 
 # feat: (B, C, H, W), ind: (B, N)
-def transpose_and_gather(feat: torch.Tensor, ind: torch.Tensor):
+def transpose_and_gather(feat: torch.Tensor, ind: torch.Tensor) -> torch.Tensor:
     ind = ind.unsqueeze(1).expand(-1, feat.size(1), -1)  # (B, C, N)
     feat = feat.view(feat.size(0), feat.size(1), -1)  # (B, C, J = H * W)
     feat = feat.gather(2, ind)  # (B, C, N)
@@ -493,81 +272,29 @@ def transpose_and_gather(feat: torch.Tensor, ind: torch.Tensor):
 
 
 # input: Tensor
-def clamped_sigmoid(input: torch.Tensor):
+def clamped_sigmoid(input: torch.Tensor) -> torch.Tensor:
     output = torch.sigmoid(input)
     return clamp_in_0_1(output)
 
 
-def clamp_in_0_1(tensor: torch.Tensor):
+def clamp_in_0_1(tensor: torch.Tensor) -> torch.Tensor:
     return torch.clamp(tensor, min=1e-6, max=1-1e-6)
 
 
-def clip_annotation(annotation, img_size):
-    (img_w, img_h) = img_size
-
-    for obj in annotation.objects:
-        obj.x = np.clip(obj.x, 0, img_w - 1)
-        obj.y = np.clip(obj.y, 0, img_h - 1)
-
-        for part in obj.parts:
-            part.x = np.clip(part.x, 0, img_w - 1)
-            part.y = np.clip(part.y, 0, img_h - 1)
-
-        if obj.box is not None:
-            obj.box.x_min = np.clip(obj.box.x_min, 0, img_w - 1)
-            obj.box.x_max = np.clip(obj.box.x_max, 0, img_w - 1)
-            obj.box.y_min = np.clip(obj.box.y_min, 0, img_h - 1)
-            obj.box.y_max = np.clip(obj.box.y_max, 0, img_h - 1)
-
-    return annotation
-
-
-def hflip_annotation(annotation, img_size):
-    img_w, _ = img_size
-
-    for obj in annotation.objects:
-        obj.x = img_w - obj.x - 1
-
-        for part in obj.parts:
-            part.x = img_w - part.x - 1
-
-        if obj.box is not None:
-            x_max = img_w - obj.box.x_min - 1
-            x_min = img_w - obj.box.x_max - 1
-            obj.box.x_min, obj.box.x_max = x_min, x_max
-
-    return annotation
-
-
-def vflip_annotation(annotation, img_size):
-    _, img_h = img_size
-
-    for obj in annotation.objects:
-        obj.y = img_h - obj.y - 1
-
-        for part in obj.parts:
-            part.y = img_h - part.y - 1
-
-        if obj.box is not None:
-            y_max = img_h - obj.box.y_min - 1
-            y_min = img_h - obj.box.y_max - 1
-            obj.box.y_min, obj.box.y_max = y_min, y_max
-
-    return annotation
-
-
-def gaussian_2d(X, Y, mu1, mu2, sigma):
+def gaussian_2d(X: np.ndarray, Y: np.ndarray, mu1: float, mu2: float, sigma: float) -> np.ndarray:
     return torch.exp((-(X - mu1)**2 - (Y - mu2)**2) / (2 * sigma**2))
 
 
 # heatmaps: (B, C, H, W)
-def nms(heatmaps: torch.Tensor):
+def nms(heatmaps: torch.Tensor) -> torch.Tensor:
     max_values = nn.functional.max_pool2d(heatmaps, kernel_size=5, stride=1, padding=2)
     return (heatmaps == max_values) * heatmaps  # (B, C, H, W)
 
 
 # scores: (B, C, H, W)
-def topk(scores: torch.Tensor, k: int = 100):
+def topk(
+    scores: torch.Tensor, k: int = 100
+) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
     batch, cat, _, width = scores.size()
 
     # (B, C, K)
@@ -589,13 +316,17 @@ def topk(scores: torch.Tensor, k: int = 100):
     return topk_score, topk_inds, topk_clses, topk_ys, topk_xs  # (B, K)
 
 
-def dict_grouping(iterable, key):
+T = TypeVar("T")
+V = TypeVar("V", bound=Hashable)
+def dict_grouping(iterable: Sequence[T], key: Callable[[T], V]) -> dict[V, T]:
     output = defaultdict(list)
     for element in iterable:
         output[key(element)].append(element)
     return output
 
 
-def get_unique_color_map(labels):
+import hashlib
+Color = tuple[int, int, int]
+def get_unique_color_map(labels: Sequence[str]) -> dict[str, Color]:
     """(╯°□°)╯︵ ┻━hash()━┻"""
-    return {n: (*xxh64_digest(n.encode())[:3],) for n in labels}
+    return {n: (*hashlib.md5(n.encode())[:3],) for n in labels}

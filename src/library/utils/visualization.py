@@ -1,52 +1,44 @@
+from turtle import width
 from .utils import *
 from PIL import ImageDraw
+from PIL.Image import Image as PILImage
 import torchvision.transforms.functional as F
 import torch
 
 
-def un_normalize(tensor):  # (B, 3, H, W)
+def un_normalize(tensor: torch.Tensor) -> torch.Tensor:  # (B, 3, H, W)
     # (3, 1, 1)
     mean = torch.tensor([0.485, 0.456, 0.406], device=tensor.device)[..., None, None]
     std = torch.tensor([0.229, 0.224, 0.225], device=tensor.device)[..., None, None]
     return tensor * std + mean
 
 
-def draw(image, annotation, args, unnorm_image=True):
-    if isinstance(image, torch.Tensor):
-        img = un_normalize(image) if unnorm_image else image
-        img = F.to_pil_image(img.cpu())  # This converts from [0, 1] to [0, 255]
-    else:
-        img = image.copy()
+def draw_graph(image: PILImage, annotation: GraphAnnotation, args) -> PILImage:
+    image = image.copy()
+    draw = ImageDraw.Draw(image)
+    graph = annotation.graph
 
-    draw = ImageDraw.Draw(img)
-    (img_w, img_h) = img.size
-    offset = int(min(img_w, img_h) * 1/100)
-    thickness = int(min(img_w, img_h) * 1/100)
+    img_size = image.size
+    radius = int(min(img_size) * 2/100)
+    thickness = radius / 2
 
-    for obj in annotation.objects:
-        obj_color = args._label_color_map[obj.name]
+    for keypoint in graph.keypoints:
+        x1, y1 = keypoint.x, keypoint.y
+        kp_color = args._label_color_map[keypoint.kind]
 
-        (x, y) = (obj.x, obj.y)
+        neighbors = graph.neighbors(keypoint)
+        for neighbor in neighbors:
+            x2, y2 = neighbor.x, neighbor.y
 
-        for kp in obj.parts:
-            kp_color = args._part_color_map[kp.kind]
+            draw.line([x1, y1, x2, y2], fill="white", width=thickness)
 
-            draw.line([x, y, kp.x, kp.y],
-                fill="white", width=thickness)
-            draw.ellipse([kp.x - offset, kp.y - offset, kp.x + offset, kp.y + offset],
-                fill=kp_color, outline=kp_color)
+        draw.ellipse([x1 - radius, y1 - radius, x1 + radius, y1 + radius],
+            fill=kp_color, outline=kp_color)
 
-        draw.ellipse([x - offset, y - offset, x + offset, y + offset],
-            fill=obj_color, outline=obj_color)
-
-        # if obj.box is not None:
-        #     box = obj.box
-        #     draw.rectangle([box.x_min, box.y_min, box.x_max, box.y_max], outline=obj_color, width=thickness)
-
-    return img
+    return image
 
 
-def draw_heatmaps(anchor_hm, part_hm, args):
+def draw_heatmaps(anchor_hm: torch.Tensor, part_hm: torch.Tensor, args) -> tuple[torch.Tensor, torch.Tensor]:
     assert anchor_hm.dim() == 3 and part_hm.dim() == 3, "Do not send batched data to this function, only one sample"
 
     (c1, h, w) = anchor_hm.shape
@@ -72,7 +64,9 @@ def draw_heatmaps(anchor_hm, part_hm, args):
     return anchor_hm_color.type(torch.uint8), part_hm_color.type(torch.uint8)
 
 
-def draw_kp_and_emb(image, topk_obj, topk_kp, embeddings, args):
+def draw_kp_and_emb(
+    image: PILImage, topk_obj: torch.Tensor, topk_kp: torch.Tensor, embeddings: torch.Tensor, args
+):
     thresh = args.conf_threshold
 
     img = un_normalize(image.cpu())
@@ -82,8 +76,8 @@ def draw_kp_and_emb(image, topk_obj, topk_kp, embeddings, args):
     offset = int(min(img_w, img_h) * 1/100)
     thickness = int(min(img_w, img_h) * 1/100)
 
-    (obj_scores, _, obj_labels, obj_ys, obj_xs) = topk_obj
-    (part_scores, _, part_labels, part_ys, part_xs) = topk_kp
+    obj_scores, _, obj_labels, obj_ys, obj_xs = topk_obj
+    part_scores, _, part_labels, part_ys, part_xs = topk_kp
 
     for (x, y, label, score) in zip(obj_xs.squeeze(0), obj_ys.squeeze(0), obj_labels.squeeze(0), obj_scores.squeeze(0)):
         if score < thresh: continue
@@ -136,7 +130,7 @@ def draw_embeddings(image, embeddings, args):
     return image
     
 
-def draw_keypoints(image, keypoints, args):
+def draw_keypoints(image: PILImage, keypoints: Sequence[Keypoint], args) -> PILImage:
     image = image.copy()
     draw = ImageDraw.Draw(image)
     

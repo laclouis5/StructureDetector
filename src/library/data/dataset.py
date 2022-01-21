@@ -6,7 +6,7 @@ from .transforms import Compose
 from collections import defaultdict
 
 
-class CropDataset(data.Dataset):
+class Dataset(data.Dataset):
 
     def __init__(self, args, directories, transforms=None):
         super().__init__()
@@ -31,21 +31,21 @@ class CropDataset(data.Dataset):
     def __len__(self):
         return len(self.files)
 
-    def __getitem__(self, index):
-        annotation = ImageAnnotation.from_json(self.files[index], self.args.anchor_name)
+    def __getitem__(self, index: int):
+        annotation = GraphAnnotation.from_json(self.files[index])
         image = Image.open(annotation.image_path)
-        annotation.img_size = image.size
 
         if self.transform is not None:
             return self.transform(image, annotation)
 
-        return (image, annotation)
+        return image, annotation
 
     def localize_image_names(self):
         for file in self.files:
-            annotation = ImageAnnotation.from_json(file, self.args.anchor_name)
-            annotation.image_path = file.parent / annotation.image_name
-            annotation.save_json(file.parent)
+            annotation = json.loads(file.read_text())
+            image_name = Path(annotation["image_path"]).name
+            annotation["image_path"] = file.parent / image_name
+            file.write_text(json.dumps(annotation, indent=2))
 
     @staticmethod
     def collate_fn(elements):
@@ -62,44 +62,6 @@ class CropDataset(data.Dataset):
             "part_mask": torch.stack([element["part_mask"] for element in elements], dim=0),
             "annotation": [element["annotation"] for element in elements]
         }
-
-    def __repr__(self):
-        description = f"Images: {len(self)}\n"
-        stats = DatasetStats()
-
-        for file in self.files:
-            annotation = ImageAnnotation.from_json(file, self.args.anchor_name)
-            stats.update(annotation.objects)
-
-        description += f"{stats}"
-
-        return description
-
-    def histogram(self):
-        import altair as alt
-        import pandas as pd
-
-        data = []
-        for file in self.files:
-            annotation = ImageAnnotation.from_json(file, self.args.anchor_name)
-            for obj in annotation.objects:
-                data.append({"label": obj.name, "leaves": obj.nb_parts})
-        
-        df = pd.DataFrame(data)
-        mf = df[df.label == "maize"]
-        bf = df[df.label == "bean"]
-
-        maize_chart = alt.Chart(mf, width=600, height=400).mark_rect().encode(
-            alt.X("leaves:O", title="Nombre de feuilles"),
-            alt.Y("count()", title="Nombre de plantes"),
-        )
-
-        bean_chart = alt.Chart(bf, width=600, height=400).mark_rect().encode(
-            alt.X("leaves:O", title="Nombre de feuilles"),
-            alt.Y("count()", title="Nombre de plantes"),
-        )
-
-        (maize_chart | bean_chart).show()
 
 
 class PredictionDataset(data.Dataset):
@@ -120,58 +82,3 @@ class PredictionDataset(data.Dataset):
 
     def __len__(self):
         return len(self.images)
-
-
-class LabelStats:
-
-    def __init__(self):
-        self.count = 0
-        self.parts = defaultdict(int)
-
-    def __len__(self):
-        return len(self.parts)
-
-    def update(self, obj):
-        self.count += 1
-
-        for kp in obj.parts:
-            self.parts[kp.kind] += 1
-
-    def __repr__(self):
-        parts = "{"
-        for (name, count) in self.parts.items():
-            parts += f"'{name}': {count}"
-        parts += "}"
-
-        description =  f"  count: {self.count}\n"
-        description += f"  part count: {parts}\n"
-        return description
-
-
-class DatasetStats:
-
-    def __init__(self):
-        self.stats = defaultdict(LabelStats)
-
-    def __getitem__(self, label):
-        return self.stats[label]
-
-    def __len__(self):
-        return len(self.stats)
-
-    def items(self):
-        return self.stats.items()
-
-    def update(self, objects):
-        if isinstance(objects, list):
-            for obj in objects:
-                self.stats[obj.name].update(obj)
-        else:
-            self.stats[objects.name].update(objects)
-
-    def __repr__(self):
-        description = ""
-        for (label, stats) in self.items():
-            description += f"label: {label}\n"
-            description += f"{stats}"
-        return description
