@@ -3,7 +3,6 @@ import torch
 import torch.utils.data as data
 from PIL import Image
 from .transforms import Compose
-from collections import defaultdict
 
 
 class Dataset(data.Dataset):
@@ -17,7 +16,7 @@ class Dataset(data.Dataset):
         else:
             self.transform = transforms
 
-        if isinstance(directories, str):
+        if isinstance(directories, (str, Path)):
             self.files = files_with_extension(directories, ".json")
         elif isinstance(directories, list):
             self.files = [file
@@ -32,7 +31,7 @@ class Dataset(data.Dataset):
         return len(self.files)
 
     def __getitem__(self, index: int):
-        annotation = GraphAnnotation.from_json(self.files[index])
+        annotation = GraphAnnotation.from_json_ann(self.files[index])
         image = Image.open(annotation.image_path)
 
         if self.transform is not None:

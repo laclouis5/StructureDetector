@@ -6,6 +6,7 @@ import numpy as np
 import torch.nn as nn
 from collections import defaultdict
 from pathlib import Path
+import hashlib
 
 
 Size = tuple[int, int]
@@ -60,8 +61,11 @@ class Keypoint:
 
 class Graph:
 
-    def __init__(self, keypoints: Sequence[Keypoint]):
-        self._adjacency: dict[Keypoint, set[Keypoint]] = {kp: set() for kp in keypoints}
+    def __init__(self, keypoints: Sequence[Keypoint] = None):
+        if keypoints is not None:
+            self._adjacency = {kp: set() for kp in keypoints}
+        else:
+            self._adjacency = {}
 
     @property
     def keypoints(self):
@@ -139,18 +143,26 @@ class Graph:
         }
 
     @staticmethod
-    def from_json_ann(json_obj: dict) -> "Graph":
+    def from_json_ann(json_obj: dict, img_h: int) -> "Graph":
         graph = Graph()
 
-        def _dfs(node: dict):
-            value = node["value"]
-            keypoint = Keypoint(kind=value["name"], x=value["x"], y=value["y"])
-            graph.add(keypoint)
-            for child in value["children"]:
-                graph.connect(keypoint, child)
-                _dfs(child)
+        def _dfs(node: dict, asso_kp: Keypoint):
+            for child in node["children"]:
+                value = node["value"]
+                y, x = value["x"], img_h - value["y"] - 1
+                keypoint = Keypoint(kind=value.get("name", "unknown"), x=x, y=y)
+                graph.add(keypoint)
+                graph.connect(asso_kp, keypoint)
+                _dfs(child, keypoint)
 
-        _dfs(json_obj["value"])
+        value = json_obj["value"]
+        y, x = value["x"], img_h - value["y"] - 1
+        keypoint = Keypoint(kind=value["name"], x=x, y=y)
+        graph.add(keypoint)
+
+        _dfs(json_obj, keypoint)
+
+        return graph
 
     @staticmethod
     def from_json(json_obj: dict) -> "Graph":
@@ -210,9 +222,9 @@ class GraphAnnotation:
     @staticmethod
     def _from_json_ann_obj(json_obj: dict) -> "GraphAnnotation":
         return GraphAnnotation(
-            image_path=Path(json_obj["image_path"]), 
-            graph=Graph.from_json_ann(json_obj["graph"]),
-            image_size=json_obj.get("image_size"))
+            image_path=Path(json_obj["imageUrl"]), 
+            graph=Graph.from_json_ann(json_obj["tree"], json_obj["imageSize"]["height"]),
+            image_size=json_obj["imageSize"])
 
     @staticmethod
     def from_json(file_path: Path) -> "GraphAnnotation":
@@ -325,8 +337,11 @@ def dict_grouping(iterable: Sequence[T], key: Callable[[T], V]) -> dict[V, T]:
     return output
 
 
-import hashlib
 Color = tuple[int, int, int]
+def unique_color(string: str) -> Color:
+    return (*hashlib.md5(string.encode()).digest()[:3],)
+
+
 def get_unique_color_map(labels: Sequence[str]) -> dict[str, Color]:
     """(╯°□°)╯︵ ┻━hash()━┻"""
-    return {n: (*hashlib.md5(n.encode())[:3],) for n in labels}
+    return {n: unique_color(n) for n in labels}

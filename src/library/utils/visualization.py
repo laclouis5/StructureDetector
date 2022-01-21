@@ -1,4 +1,3 @@
-from turtle import width
 from .utils import *
 from PIL import ImageDraw
 from PIL.Image import Image as PILImage
@@ -19,20 +18,23 @@ def draw_graph(image: PILImage, annotation: GraphAnnotation, args) -> PILImage:
     graph = annotation.graph
 
     img_size = image.size
-    radius = int(min(img_size) * 2/100)
-    thickness = radius / 2
+    radius = int(min(img_size) * 1/100)
+    thickness = int(radius / 2)
 
     for keypoint in graph.keypoints:
-        x1, y1 = keypoint.x, keypoint.y
-        kp_color = args._label_color_map[keypoint.kind]
+        x1, y1 = int(keypoint.x), int(keypoint.y)
 
         neighbors = graph.neighbors(keypoint)
         for neighbor in neighbors:
-            x2, y2 = neighbor.x, neighbor.y
+            x2, y2 = int(neighbor.x), int(neighbor.y)
 
             draw.line([x1, y1, x2, y2], fill="white", width=thickness)
 
-        draw.ellipse([x1 - radius, y1 - radius, x1 + radius, y1 + radius],
+    for keypoint in graph.keypoints:
+        x, y = int(keypoint.x), int(keypoint.y)
+        kp_color = unique_color(keypoint.kind)
+        
+        draw.ellipse([x - radius, y - radius, x + radius, y + radius],
             fill=kp_color, outline=kp_color)
 
     return image
