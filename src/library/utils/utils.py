@@ -1,6 +1,6 @@
 import copy
 import json
-from typing import Sequence, TypeVar
+from typing import Sequence
 import torch
 import numpy as np
 import torch.nn as nn
