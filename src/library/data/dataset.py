@@ -51,17 +51,13 @@ class Dataset(data.Dataset):
     def collate_fn(elements):
         return {
             "image": torch.stack([element["image"] for element in elements], dim=0),
-            "anchor_hm": torch.stack([element["anchor_hm"] for element in elements], dim=0),
-            "part_hm": torch.stack([element["part_hm"] for element in elements], dim=0),
-            "anchor_offsets": torch.stack([element["anchor_offsets"] for element in elements], dim=0),
-            "part_offsets": torch.stack([element["part_offsets"] for element in elements], dim=0),
+            "annotation": [element["annotation"] for element in elements],
+            "heatmaps": torch.stack([element["heatmaps"] for element in elements], dim=0),
+            "offset": torch.stack([element["offset"] for element in elements], dim=0),
             "embeddings": torch.stack([element["embeddings"] for element in elements], dim=0),
-            "anchor_inds": torch.stack([element["anchor_inds"] for element in elements], dim=0),
-            "part_inds": torch.stack([element["part_inds"] for element in elements], dim=0),
-            "anchor_mask": torch.stack([element["anchor_mask"] for element in elements], dim=0),
-            "part_mask": torch.stack([element["part_mask"] for element in elements], dim=0),
-            "annotation": [element["annotation"] for element in elements]
-        }
+            "inds": torch.stack([element["inds"] for element in elements], dim=0),
+            "off_mask": torch.stack([element["off_mask"] for element in elements], dim=0),
+            "emb_mask": torch.stack([element["emb_mask"] for element in elements], dim=0)}
 
 
 class PredictionDataset(data.Dataset):
