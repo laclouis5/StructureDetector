@@ -14,7 +14,7 @@ class Loss(nn.Module):
         self.reg_loss = L1Loss()
         self.stats = LossStats()
 
-    def forward(self, input, target):
+    def forward(self, input, target) -> torch.Tensor:
         heatmaps = clamped_sigmoid(input["heatmaps"])
 
         hm_loss = self.args.hm_weight * ( \
@@ -40,7 +40,7 @@ class L1Loss(nn.Module):
         super().__init__()
 
     # input: (B, 2, H, W), target: (B, K, 2), inds & mask: (B, K)
-    def forward(self, input, target, inds, mask):
+    def forward(self, input, target, inds, mask) -> torch.Tensor:
         if (numel := mask.sum()) == 0: return 0
         preds = transpose_and_gather(input, inds)  # (B, K, 2)
         loss = torch.abs((preds - target) * mask[..., None]).sum()  # (1)

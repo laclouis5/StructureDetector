@@ -43,16 +43,16 @@ class Trainer:
         self.optimizer = torch.optim.Adam(self.net.parameters(), args.learning_rate)
         self.scheduler = torch.optim.lr_scheduler.StepLR(self.optimizer, step_size=args.lr_step)
 
-        self.train_set = CropDataset(args, args.train_dir, transforms=TrainAugmentation(args))
+        self.train_set = Dataset(args, args.train_dir, transforms=TrainAugmentation(args))
         self.train_dataloader = data.DataLoader(self.train_set,
-            batch_size=args.batch_size, collate_fn=CropDataset.collate_fn, shuffle=True,
+            batch_size=args.batch_size, collate_fn=Dataset.collate_fn, shuffle=True,
             pin_memory=args.use_cuda,
             num_workers=args.num_workers,
             drop_last=True)
 
-        self.valid_set = CropDataset(args, args.valid_dir, transforms=ValidationAugmentation(args))
+        self.valid_set = Dataset(args, args.valid_dir, transforms=ValidationAugmentation(args))
         self.valid_dataloader = data.DataLoader(self.valid_set,
-            batch_size=1, collate_fn=CropDataset.collate_fn, shuffle=True,
+            batch_size=1, collate_fn=Dataset.collate_fn, shuffle=True,
             pin_memory=args.use_cuda,
             num_workers=args.num_workers)
 
