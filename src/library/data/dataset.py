@@ -1,7 +1,7 @@
 from ..utils import *
 import torch
 import torch.utils.data as data
-from PIL import Image
+from PIL import Image, ImageOps
 from .transforms import Compose
 
 
@@ -33,6 +33,7 @@ class Dataset(data.Dataset):
     def __getitem__(self, index: int):
         annotation = GraphAnnotation.from_json_ann(self.files[index])
         image = Image.open(annotation.image_path)
+        image = ImageOps.exif_transpose(image)
 
         if self.transform is not None:
             return self.transform(image, annotation)

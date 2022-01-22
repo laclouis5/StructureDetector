@@ -1,5 +1,5 @@
 from .utils import *
-from PIL import ImageDraw
+from PIL import ImageDraw, ImageOps
 from PIL.Image import Image as PILImage
 import torchvision.transforms.functional as F
 import torch
@@ -12,26 +12,26 @@ def un_normalize(tensor: torch.Tensor) -> torch.Tensor:  # (B, 3, H, W)
     return tensor * std + mean
 
 
-def draw_graph(image: PILImage, annotation: GraphAnnotation, args) -> PILImage:
+def draw_graph(image: PILImage, annotation: GraphAnnotation) -> PILImage:
     image = image.copy()
     draw = ImageDraw.Draw(image)
     graph = annotation.graph
 
     img_size = image.size
-    radius = int(min(img_size) * 1/100)
+    radius = int(min(img_size) * 0.5/100)
     thickness = int(radius / 2)
 
     for keypoint in graph.keypoints:
-        x1, y1 = int(keypoint.x), int(keypoint.y)
+        x1, y1 = keypoint.x, keypoint.y
 
         neighbors = graph.neighbors(keypoint)
         for neighbor in neighbors:
-            x2, y2 = int(neighbor.x), int(neighbor.y)
+            x2, y2 = neighbor.x, neighbor.y
 
             draw.line([x1, y1, x2, y2], fill="white", width=thickness)
 
     for keypoint in graph.keypoints:
-        x, y = int(keypoint.x), int(keypoint.y)
+        x, y = keypoint.x, keypoint.y
         kp_color = unique_color(keypoint.kind)
         
         draw.ellipse([x - radius, y - radius, x + radius, y + radius],

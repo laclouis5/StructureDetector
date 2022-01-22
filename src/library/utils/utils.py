@@ -43,6 +43,15 @@ class Keypoint:
     def normalized(self, size: Size) -> "Keypoint":
         return copy.deepcopy(self).normalize(size)
 
+    def clip(self, size: Size) -> "Keypoint":
+        x_max, y_max = size
+        self.x = min(max(self.x, 0), x_max)
+        self.y = min(max(self.y, 0), y_max)
+        return self
+
+    def clipped(self, size: Size) -> "Keypoint":
+        return copy.deepcopy(self).clip(size)
+
     def json_repr(self) -> dict:
         return {"kind": self.kind, "location": {"x": self.x, "y": self.y}, "score": self.score}
 
@@ -94,18 +103,18 @@ class Graph:
         connected_components = []
         visited = set()
 
-        def _dfs(keypoint: Keypoint, connected: "list[Keypoint]"):
+        def _gather_connected(keypoint: Keypoint, connected: "list[Keypoint]"):
             visited.add(keypoint)
             connected.append(keypoint)
 
             for neighbor in self.neighbors(keypoint):
                 if neighbor not in visited:
-                    _dfs(neighbor, connected)
+                    _gather_connected(neighbor, connected)
 
         for keypoint in self.keypoints:
             if keypoint not in visited:
                 connected = []
-                _dfs(keypoint, connected)
+                _gather_connected(keypoint, connected)
                 connected_components.append(connected)
 
         graphs = [Graph(connected) for connected in connected_components]
@@ -133,34 +142,38 @@ class Graph:
     def normalized(self, size: Size) -> "Graph":
         return copy.deepcopy(self).normalize(size)
 
+    def clip(self, size: Size) -> "Graph":
+        for keypoint in self.keypoints:
+            keypoint.clip(size)
+        return self
+
+    def clipped(self, size: Size) -> "Graph":
+        return copy.deepcopy(self).clip(size)
+
     def json_repr(self) -> dict:
         inds = {kp: i for i, kp in enumerate(self.keypoints)}
 
         return {
             "keypoints": [kp.json_repr() for kp in self.keypoints],
             "adjacency": [[inds[neighbor] for neighbor in neighbors] 
-                for neighbors in self._adjacency.values()]
-        }
+                for neighbors in self._adjacency.values()]}
 
     @staticmethod
-    def from_json_ann(json_obj: dict, img_h: int) -> "Graph":
+    def from_json_ann(json_obj: dict) -> "Graph":
         graph = Graph()
 
-        def _dfs(node: dict, asso_kp: Keypoint):
+        def _fill_graph(node: dict):
+            value = node["value"]
+            x, y = value["x"], value["y"]
+            keypoint = Keypoint(kind=value.get("name", "unknown"), x=x, y=y)
+            node["_kp"] = keypoint
+            graph.add(keypoint)
+
             for child in node["children"]:
-                value = node["value"]
-                y, x = value["x"], img_h - value["y"] - 1
-                keypoint = Keypoint(kind=value.get("name", "unknown"), x=x, y=y)
-                graph.add(keypoint)
-                graph.connect(asso_kp, keypoint)
-                _dfs(child, keypoint)
+                _fill_graph(child)
+                graph.connect(child["_kp"], keypoint)
 
-        value = json_obj["value"]
-        y, x = value["x"], img_h - value["y"] - 1
-        keypoint = Keypoint(kind=value["name"], x=x, y=y)
-        graph.add(keypoint)
-
-        _dfs(json_obj, keypoint)
+        _fill_graph(json_obj)
 
         return graph
 
@@ -197,34 +210,54 @@ class GraphAnnotation:
     def resized(self, in_size: Size, out_size: Size) -> "GraphAnnotation":
         return copy.deepcopy(self).resize(in_size, out_size)
 
-    def flip_lr(self, size: Size) -> "Graph":
+    def flip_lr(self, size: Size) -> "GraphAnnotation":
         img_w, _ = size
-        for keypoint in self.keypoints:
+        for keypoint in self.graph.keypoints:
             keypoint.x = img_w - keypoint.x - 1
         return self
 
-    def fliped_lr(self, size: Size) -> "Graph":
+    def fliped_lr(self, size: Size) -> "GraphAnnotation":
         return copy.deepcopy(self).flip_lr(size)
 
+    def clip(self, size: Size) -> "GraphAnnotation":
+        self.graph.clip(size)
+        return self
+
+    def clipped(self, size: Size) -> "GraphAnnotation":
+        return copy.deepcopy(self).clip(size)
+
     def json_repr(self) -> dict:
+        image_size = self.image_size
+        if image_size is not None:
+            img_w, img_h = self.image_size
+            image_size = {"width": img_w, "height": img_h}
+
         return {
             "image_path": f"{self.image_path}",
-            "image_size": self.image_size,
+            "image_size": image_size,
             "graph": self.graph.json_repr()}
 
     @staticmethod
     def _from_json_obj(json_obj: dict) -> "GraphAnnotation":
+        img_size = json_obj.get("image_size")  
+        if img_size is not None:
+            img_size = (img_size["width"], img_size["height"])
+
         return GraphAnnotation(
             image_path=Path(json_obj["image_path"]), 
             graph=Graph.from_json(json_obj["graph"]),
-            image_size=json_obj.get("image_size"))
+            image_size=img_size)
 
     @staticmethod
     def _from_json_ann_obj(json_obj: dict) -> "GraphAnnotation":
+        img_size = json_obj.get("imageSize")  
+        if img_size is not None:
+            img_size = (img_size["width"], img_size["height"])
+
         return GraphAnnotation(
             image_path=Path(json_obj["imageUrl"]), 
-            graph=Graph.from_json_ann(json_obj["tree"], json_obj["imageSize"]["height"]),
-            image_size=json_obj["imageSize"])
+            graph=Graph.from_json_ann(json_obj["tree"]),
+            image_size=img_size)
 
     @staticmethod
     def from_json(file_path: Path) -> "GraphAnnotation":
@@ -338,8 +371,8 @@ def dict_grouping(iterable: Sequence[T], key: Callable[[T], V]) -> dict[V, T]:
 
 
 Color = tuple[int, int, int]
-def unique_color(string: str) -> Color:
-    return (*hashlib.md5(string.encode()).digest()[:3],)
+def unique_color(string: str, seed: str = "") -> Color:
+    return (*hashlib.md5((string + seed).encode()).digest()[:3],)
 
 
 def get_unique_color_map(labels: Sequence[str]) -> dict[str, Color]:
