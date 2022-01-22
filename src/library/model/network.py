@@ -36,8 +36,7 @@ class Network(nn.Module):
         super().__init__()
 
         self.label_count = len(args.labels)  # M
-        self.part_count = len(args.parts)  # N
-        self.out_channels = self.label_count + self.part_count + 4  # M+N+4
+        self.out_channels = self.label_count + 4  # M + 4
         self.fpn_depth = args.fpn_depth
 
         resnet = torchvision.models.resnet34(pretrained=pretrained)
@@ -71,11 +70,10 @@ class Network(nn.Module):
 
         out = self.head(f1)  # (B, M+N+4, H/4, W/4)
 
-        nb_hm = self.label_count + self.part_count  # M+N
+        nb_hm = self.label_count  # M
 
         return {  # R = 4
-            "anchor_hm": out[:, :self.label_count],  # (B, M, H/R, W/R)
-            "part_hm": out[:, self.label_count:nb_hm],  # (B, N, H/R, W/R)
+            "heatmaps": out[:, :self.label_count],  # (B, M, H/R, W/R)
             "offsets": out[:, nb_hm:(nb_hm + 2)],  # (B, 2, H/R, W/R)
             "embeddings": out[:, (nb_hm + 2):(nb_hm + 4)]}  # (B, 2, H/R, W/R)
 

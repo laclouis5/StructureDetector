@@ -130,7 +130,8 @@ class Encode:
         offsets = torch.zeros(self.max_objects, 2)
         embeddings = torch.zeros(self.max_parts, 2)
         inds = torch.zeros(self.max_objects, dtype=torch.long)
-        mask = torch.zeros(self.max_objects, dtype=torch.bool)
+        off_mask = torch.zeros(self.max_objects, dtype=torch.bool)
+        emb_mask = torch.zeros(self.max_objects, dtype=torch.bool)
 
         resized_target = target.resized((img_w, img_h), (out_w, out_h))
         resized_target.clip((out_w, out_h))
@@ -148,13 +149,15 @@ class Encode:
 
             offset = torch.tensor((x - x_r, y - y_r))
             offsets[kp_index] = offset
-            mask[kp_index] = True
+            off_mask[kp_index] = True
 
             child = resized_target.tree.child(keypoint)
 
             if child is not None:
                 embedding = torch.tensor((child.x - x, child.y - y))
                 embeddings[kp_index] = embedding
+
+                emb_mask[kp_index] = True
 
         return {
             "image": input,
@@ -163,7 +166,7 @@ class Encode:
             "offsets": offsets,
             "embeddings": embeddings,
             "inds": inds,
-            "mask": mask}
+            "off_mask": off_mask, "emb_mask": emb_mask}
 
     def __repr__(self) -> str:
         return f"Encode(max_objects: {self.max_objects}, nb_labels: {len(self.labels)}, down_ratio: {self.down_ratio})"

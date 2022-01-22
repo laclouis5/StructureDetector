@@ -15,24 +15,19 @@ class Loss(nn.Module):
         self.stats = LossStats()
 
     def forward(self, input, target):
-        anchor_hm = clamped_sigmoid(input["anchor_hm"])
-        part_hm = clamped_sigmoid(input["part_hm"])
+        heatmaps = clamped_sigmoid(input["heatmaps"])
 
         hm_loss = self.args.hm_weight * ( \
-            self.hm_loss(anchor_hm, target["anchor_hm"]) \
-            + self.hm_loss(part_hm, target["part_hm"]))
+            self.hm_loss(heatmaps, target["heatmaps"]))
 
         offset_loss = self.args.offset_weight * ( \
             self.reg_loss(
-                input["offsets"], target["anchor_offsets"],
-                target["anchor_inds"], target["anchor_mask"]) \
-            + self.reg_loss(
-                input["offsets"], target["part_offsets"],
-                target["part_inds"], target["part_mask"]))
+                input["offsets"], target["offsets"],
+                target["inds"], target["off_mask"]))
 
         embeddings_loss = self.args.embedding_weight * self.reg_loss(
             input["embeddings"], target["embeddings"],
-            target["part_inds"], target["part_mask"])
+            target["inds"], target["emb_mask"])
 
         self.stats.update(hm_loss, offset_loss, embeddings_loss)
 
