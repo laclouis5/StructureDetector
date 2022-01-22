@@ -1,6 +1,6 @@
 import copy
 import json
-from typing import Callable, Hashable, Sequence, TypeVar
+from typing import Callable, Hashable, Optional, Sequence, TypeVar
 import torch
 import numpy as np
 import torch.nn as nn
@@ -66,6 +66,107 @@ class Keypoint:
 
     def __repr__(self) -> str:
         return f"Keypoint(kind: {self.kind}, x: {self.x}, y: {self.y}, score: {self.score})"
+
+
+class Tree:
+
+    def __init__(self, keypoints: Sequence[Keypoint] = None):
+        if keypoints is not None:
+            self._adjacency: dict[Keypoint, Optional[Keypoint]] = {kp: None for kp in keypoints}
+        else:
+            self._adjacency = {}
+
+    @property
+    def keypoints(self):
+        return self._adjacency.keys()
+
+    @property
+    def nb_keypoints(self) -> int:
+        return len(self._adjacency)
+
+    def child(self, keypoint: Keypoint) -> Optional[Keypoint]:
+        assert keypoint in self.keypoints
+        return self._adjacency[keypoint]
+
+    def connect(self, keypoint: Keypoint, to_kp: Keypoint):
+        assert keypoint in self.keypoints
+        assert to_kp in self.keypoints
+        assert self._adjacency[keypoint] is None
+
+        self._adjacency[keypoint] = to_kp
+
+    def add(self, keypoint: Keypoint):
+        assert keypoint not in self.keypoints
+        self._adjacency[keypoint] = None
+
+    def resize(self, in_size: Size, out_size: Size) -> "Tree":
+        for keypoint in self.keypoints:
+            keypoint.resize(in_size, out_size)
+        return self
+
+    def resized(self, in_size: Size, out_size: Size) -> "Tree":
+        return copy.deepcopy(self).resize(in_size, out_size)
+
+    def normalize(self, size: Size) -> "Tree":
+        for keypoint in self.keypoints:
+            keypoint.normalize(size)
+        return self
+
+    def normalized(self, size: Size) -> "Tree":
+        return copy.deepcopy(self).normalize(size)
+
+    def clip(self, size: Size) -> "Tree":
+        for keypoint in self.keypoints:
+            keypoint.clip(size)
+        return self
+
+    def clipped(self, size: Size) -> "Tree":
+        return copy.deepcopy(self).clip(size)
+
+    def json_repr(self) -> dict:
+        inds = {kp: i for i, kp in enumerate(self.keypoints)}
+
+        return {
+            "keypoints": [kp.json_repr() for kp in self.keypoints],
+            "adjacency": [inds[child] if child is not None else None 
+                for child in self._adjacency.values()]}
+
+    @staticmethod
+    def from_json_ann(json_obj: dict) -> "Tree":
+        tree = Tree()
+
+        def _fill_tree(node: dict):
+            value = node["value"]
+            x, y = value["x"], value["y"]
+            keypoint = Keypoint(kind=value.get("name", "unknown"), x=x, y=y)
+            node["_kp"] = keypoint
+            tree.add(keypoint)
+
+            for child in node["children"]:
+                _fill_tree(child)
+                tree.connect(child["_kp"], keypoint)
+
+        _fill_tree(json_obj)
+
+        return tree
+    
+    def to_graph(self) -> "GraphAnnotation":
+        graph = Graph()
+
+        for keypoint, child in self._adjacency.items():
+            graph.add(keypoint)
+
+            if child is not None:
+                if child not in graph.keypoints:
+                    graph.add(child)
+                graph.connect(keypoint, child)
+
+        return graph
+
+    # TODO: def from_json()
+
+    def __repr__(self) -> str:
+        return f"Tree(keypoints: {set(self.keypoints)})"
 
 
 class Graph:
@@ -241,7 +342,7 @@ class GraphAnnotation:
     def _from_json_obj(json_obj: dict) -> "GraphAnnotation":
         img_size = json_obj.get("image_size")  
         if img_size is not None:
-            img_size = (img_size["width"], img_size["height"])
+            img_size = img_size["width"], img_size["height"]
 
         return GraphAnnotation(
             image_path=Path(json_obj["image_path"]), 
@@ -268,6 +369,74 @@ class GraphAnnotation:
     def from_json_ann(file_path: Path) -> "GraphAnnotation":
         content = json.loads(file_path.read_text())
         return GraphAnnotation._from_json_ann_obj(content)
+
+
+class TreeAnnotation:
+
+    def __init__(self, image_path: Path, tree: Tree, image_size: "tuple[int, int]" = None):
+        self.image_path = image_path
+        self.tree = tree
+        self.image_size = image_size
+
+    @property
+    def image_name(self) -> str:
+        return self.image_path.name
+    
+    def resize(self, in_size: Size, out_size: Size) -> "TreeAnnotation":
+        self.tree.resize(in_size, out_size)
+        return self
+
+    def resized(self, in_size: Size, out_size: Size) -> "TreeAnnotation":
+        return copy.deepcopy(self).resize(in_size, out_size)
+
+    def flip_lr(self, size: Size) -> "TreeAnnotation":
+        img_w, _ = size
+        for keypoint in self.tree.keypoints:
+            keypoint.x = img_w - keypoint.x - 1
+        return self
+
+    def fliped_lr(self, size: Size) -> "TreeAnnotation":
+        return copy.deepcopy(self).flip_lr(size)
+
+    def clip(self, size: Size) -> "TreeAnnotation":
+        self.tree.clip(size)
+        return self
+
+    def clipped(self, size: Size) -> "TreeAnnotation":
+        return copy.deepcopy(self).clip(size)
+
+    def to_graph(self) -> "GraphAnnotation":
+        return GraphAnnotation(
+            image_path=self.image_path, 
+            graph=self.tree.to_graph(), 
+            image_size=self.image_size)
+
+    def json_repr(self) -> dict:
+        image_size = self.image_size
+        if image_size is not None:
+            img_w, img_h = self.image_size
+            image_size = {"width": img_w, "height": img_h}
+
+        return {
+            "image_path": f"{self.image_path}",
+            "image_size": image_size,
+            "tree": self.tree.json_repr()}
+
+    @staticmethod
+    def _from_json_ann_obj(json_obj: dict) -> "TreeAnnotation":
+        img_size = json_obj.get("imageSize")  
+        if img_size is not None:
+            img_size = img_size["width"], img_size["height"]
+
+        return TreeAnnotation(
+            image_path=Path(json_obj["imageUrl"]), 
+            tree=Tree.from_json_ann(json_obj["tree"]),
+            image_size=img_size)
+
+    @staticmethod
+    def from_json_ann(file_path: Path) -> "TreeAnnotation":
+        content = json.loads(file_path.read_text())
+        return TreeAnnotation._from_json_ann_obj(content)
 
 
 class AverageMeter:

@@ -11,7 +11,7 @@ class RandomHorizontalFlip:
     def __init__(self, prob=0.5):
         self.prob = prob
 
-    def __call__(self, input: PILImage, target: GraphAnnotation) -> tuple[PILImage, GraphAnnotation]:
+    def __call__(self, input: PILImage, target: GraphAnnotation) -> tuple[PILImage, TreeAnnotation]:
         if torch.randn(1).item() < self.prob:
             return F.hflip(input), target.fliped_lr(input.size)
         else:
@@ -30,7 +30,7 @@ class RandomColorJitter:
             saturation=saturation,
             hue=hue)
 
-    def __call__(self, input: PILImage, target: GraphAnnotation) -> tuple[PILImage, GraphAnnotation]:
+    def __call__(self, input: PILImage, target: GraphAnnotation) -> tuple[PILImage, TreeAnnotation]:
         return self.transform(input), target
 
     def __repr__(self) -> str:
@@ -49,7 +49,7 @@ class Resize:
         else:
             raise IOError("Input 'size' must be an int or a tuple<int>.")
 
-    def __call__(self, input: PILImage, target: GraphAnnotation) -> tuple[PILImage, GraphAnnotation]:
+    def __call__(self, input: PILImage, target: GraphAnnotation) -> tuple[PILImage, TreeAnnotation]:
         image = F.resize(input, (self.height, self.width))
         annotation = target.resized(input.size, (self.width, self.height))
         return image, annotation
@@ -71,7 +71,7 @@ class RandomResize:
         self.width = args.width
         self.height = args.height
 
-    def __call__(self, input: PILImage, target: GraphAnnotation) -> tuple[PILImage, GraphAnnotation]:
+    def __call__(self, input: PILImage, target: TreeAnnotation) -> tuple[PILImage, TreeAnnotation]:
         ratio = self.ratios[torch.randint(len(self.ratios), (1,)).item()]
         width, height = int(ratio * self.width), int(ratio * self.height)
         image = F.resize(input, (height, width))
@@ -88,7 +88,7 @@ class Compose:
     def __init__(self, transforms):
         self.transforms = transforms
 
-    def __call__(self, *inputs) -> tuple[PILImage, GraphAnnotation]:
+    def __call__(self, *inputs) -> tuple[PILImage, TreeAnnotation]:
         for transform in self.transforms:
             inputs = transform(*inputs)
 
@@ -103,7 +103,7 @@ class Normalize:
     def __init__(self, mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]):
         self.transform = torchtf.Normalize(mean=mean, std=std)
 
-    def __call__(self, input: PILImage, target: GraphAnnotation) -> tuple[torch.Tensor, GraphAnnotation]:
+    def __call__(self, input: PILImage, target: TreeAnnotation) -> tuple[torch.Tensor, TreeAnnotation]:
         output = F.to_tensor(input)  # input is normalized in [0, 1]
         return self.transform(output), target
 
@@ -116,29 +116,26 @@ class Encode:
     def __init__(self, args):
         self.down_ratio = args.down_ratio
         self.labels = args.labels
-        self.parts = args.parts
         self.max_objects = args.max_objects
-        self.max_parts = args.max_parts
         self.sigma_gauss = args.sigma_gauss
 
-    def __call__(self, input: PILImage, target: GraphAnnotation) -> dict:
+    def __call__(self, input: PILImage, target: TreeAnnotation) -> dict:
         img_h, img_w = input.shape[-2:]
         out_w, out_h = int(img_w / self.down_ratio), int(img_h / self.down_ratio)
-        kp_idx = 0
 
         sigma = self.sigma_gauss * min(out_w, out_h) / 3
         Y, X = torch.meshgrid(torch.arange(out_h), torch.arange(out_w))
 
         heatmaps = torch.zeros(len(self.labels) + len(self.parts), out_h, out_w)
-        anchor_inds = torch.zeros(self.max_objects, dtype=torch.long)
-        anchor_offs = torch.zeros(self.max_objects, 2)
+        offsets = torch.zeros(self.max_objects, 2)
         embeddings = torch.zeros(self.max_parts, 2)
-        anchor_mask = torch.zeros(self.max_objects, dtype=torch.bool)
+        inds = torch.zeros(self.max_objects, dtype=torch.long)
+        mask = torch.zeros(self.max_objects, dtype=torch.bool)
 
         resized_target = target.resized((img_w, img_h), (out_w, out_h))
         resized_target.clip((out_w, out_h))
 
-        keypoints = islice(resized_target.graph.keypoints, self.max_objects)
+        keypoints = islice(resized_target.tree.keypoints, self.max_objects)
 
         for kp_index, keypoint in enumerate(keypoints):
             label_index = self.labels[keypoint.kind]
@@ -147,48 +144,29 @@ class Encode:
             
             heatmap_kp = gaussian_2d(X, Y, x_r, y_r, sigma)
             heatmaps[label_index] = torch.max(heatmaps[label_index], heatmap_kp)
-            anchor_inds[kp_index] = y_r * out_w + x_r
+            inds[kp_index] = y_r * out_w + x_r
 
-            anchor_offset = torch.tensor((x - x_r, y - y_r))
-            anchor_offs[kp_index] = anchor_offset
-            anchor_mask[kp_index] = True
+            offset = torch.tensor((x - x_r, y - y_r))
+            offsets[kp_index] = offset
+            mask[kp_index] = True
 
-        # TODO
+            child = resized_target.tree.child(keypoint)
 
-        # for obj_idx, obj in enumerate(resized_target.objects[:self.max_objects]):
-        #     for kp in obj.parts:
-        #         kind_index = self.parts[kp.kind] + len(self.labels)  # index in whole HM
-
-        #         part_hm = gaussian_2d(X, Y, int(kp.x), int(kp.y), sigma)
-        #         heatmaps[kind_index] = torch.max(heatmaps[kind_index], part_hm)
-
-        #         parts_inds[kp_idx] = int(kp.y) * out_w + int(kp.x)
-
-        #         part_offset = torch.tensor((kp.x - int(kp.x), kp.y - int(kp.y)))
-        #         part_offs[kp_idx] = part_offset
-
-        #         embedding = torch.tensor((obj.x - kp.x, obj.y - kp.y))
-        #         embeddings[kp_idx] = embedding
-
-        #         part_mask[kp_idx] = True
-
-        #         kp_idx += 1
-        #         if kp_idx == self.max_parts: break
-
-        #     if kp_idx == self.max_parts: break
+            if child is not None:
+                embedding = torch.tensor((child.x - x, child.y - y))
+                embeddings[kp_index] = embedding
 
         return {
             "image": input,
-            "anchor_hm": heatmaps[:len(self.labels)],
-            "part_hm": heatmaps[len(self.labels):],
-            "anchor_inds": anchor_inds, "part_inds": parts_inds,
-            "anchor_offsets": anchor_offs, "part_offsets": part_offs,
+            "annotation": target,
+            "heatmaps": heatmaps,
+            "offsets": offsets,
             "embeddings": embeddings,
-            "anchor_mask": anchor_mask, "part_mask": part_mask,
-            "annotation": target}
+            "inds": inds,
+            "mask": mask}
 
     def __repr__(self) -> str:
-        return f"Encode(max_objects: {self.max_objects}, max_parts: {self.max_parts}, down_ratio: {self.down_ratio}, nb_labels: {len(self.labels)}, nb_parts: {len(self.parts)})"
+        return f"Encode(max_objects: {self.max_objects}, nb_labels: {len(self.labels)}, down_ratio: {self.down_ratio})"
 
 
 class TrainAugmentation:

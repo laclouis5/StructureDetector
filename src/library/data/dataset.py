@@ -31,7 +31,7 @@ class Dataset(data.Dataset):
         return len(self.files)
 
     def __getitem__(self, index: int):
-        annotation = GraphAnnotation.from_json_ann(self.files[index])
+        annotation = TreeAnnotation.from_json_ann(self.files[index])
         image = Image.open(annotation.image_path)
         image = ImageOps.exif_transpose(image)
 

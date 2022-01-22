@@ -9,10 +9,10 @@ def main():
 
     dataset = Dataset(args, args.valid_dir)
     img, ann = dataset[0]
-    
+
     Path("~/Downloads/ann.json").expanduser().write_text(json.dumps(ann.json_repr(), indent=2))
 
-    img = draw_graph(img, ann)
+    img = draw_graph(img, ann.to_graph())
     img.show()
     
 
