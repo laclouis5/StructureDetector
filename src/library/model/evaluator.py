@@ -198,7 +198,7 @@ class Evaluator:
         preds = dict_grouping(pred_graph.keypoints, key=lambda kp: kp.kind)
         gts = dict_grouping(gt_graph.keypoints, key=lambda kp: kp.kind)
 
-        kp_eval = self.keypoint_evaluation
+        kp_eval = Evaluations(self.labels)
 
         for label in self.labels:
             res = kp_eval[label]
@@ -226,6 +226,8 @@ class Evaluator:
                     visited[j_min] = True
                     res.tp += 1
                     res.acc.append(min_dist / min(img_size))
+
+        self.keypoint_evaluation += kp_eval
 
     def pretty_print(self):
         table = Table(Column("Label", style="bold"), *Evaluation.columns(), title="Keypoints Location")

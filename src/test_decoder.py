@@ -26,14 +26,14 @@ class NetworkMock:
             for raw_index, off, is_included in zip(inds[b], offsets[b], off_mask[b]):
                 if is_included:
                     x_r = raw_index % w_r
-                    y_r = raw_index // w_r
+                    y_r = torch.div(raw_index, w_r, rounding_mode="floor")
 
                     out_offset[b, :, y_r, x_r] = off
 
             for raw_index, emb, is_included in zip(inds[b], embeddings[b], emb_mask[b]):
                 if is_included:
                     x_r = raw_index % w_r
-                    y_r = raw_index // w_r
+                    y_r = torch.div(raw_index, w_r, rounding_mode="floor")
 
                     out_embeddings[b, :, y_r, x_r] = emb
 

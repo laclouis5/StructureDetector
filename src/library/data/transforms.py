@@ -124,7 +124,7 @@ class Encode:
         out_w, out_h = int(img_w / self.down_ratio), int(img_h / self.down_ratio)
 
         sigma = self.sigma_gauss * min(out_w, out_h) / 3
-        Y, X = torch.meshgrid(torch.arange(out_h), torch.arange(out_w))
+        Y, X = torch.meshgrid(torch.arange(out_h), torch.arange(out_w), indexing="ij")
 
         heatmaps = torch.zeros(len(self.labels), out_h, out_w)
         offsets = torch.zeros(self.max_objects, 2)

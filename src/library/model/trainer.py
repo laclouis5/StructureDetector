@@ -83,12 +83,12 @@ class Trainer:
             loss.backward()
             self.optimizer.step()
 
-            self.writer.add_scalars("Loss/Train", self.loss.stats.__dict__, self.global_step)
+            self.writer.add_scalars("Loss/Training", self.loss.stats.__dict__, self.global_step)
             self.global_step += self.args.batch_size
 
         self.scheduler.step()
         self.train_set.transform.trigger_random_resize()
-        self.writer.add_scalar("Learning rate", self.optimizer.param_groups[0]["lr"], self.global_step)
+        self.writer.add_scalar("Learning Rate", self.optimizer.param_groups[0]["lr"], self.global_step)
 
     def valid(self):
         self.net.eval()
@@ -104,14 +104,14 @@ class Trainer:
                 output = self.net(batch["image"])
 
             ground_truth = batch["annotation"][0].to_graph()
-            ground_truth.resize((self.args.width, self.args.height), ground_truth.image_size)
+            ground_truth = ground_truth.resized((self.args.width, self.args.height), ground_truth.image_size)
 
             predicted_graph = self.decoder(output)[0]
             prediction = GraphAnnotation(
                 ground_truth.image_path, 
                 predicted_graph, 
                 ground_truth.image_size)
-            prediction.resize((self.args.width, self.args.height), prediction.image_size)
+            prediction = prediction.resized((self.args.width, self.args.height), prediction.image_size)
 
             self.evaluator.evaluate(prediction, ground_truth)
 
@@ -152,7 +152,13 @@ class Trainer:
 
         graph = predicted_graph  # Last predicted graph
 
-        output = draw_graph(image, graph)
-        output = F.to_tensor(output)
+        graph_im = draw_graph(image, graph)
+        graph_im = F.to_tensor(graph_im)
 
-        self.writer.add_image("Prediction", output, self.global_step)
+        self.writer.add_image("Predicted Graph", graph_im, self.global_step)
+
+        # Heatmaps
+        heatmaps = output["heatmaps"][0]
+        heatmaps_im = draw_heatmaps(heatmaps, self.args)
+        heatmaps_im = F.to_tensor(heatmaps_im)
+        self.writer.add_image("Predicted Heatmaps", heatmaps_im, self.global_step)
