@@ -3,7 +3,7 @@ Graph Structure Detector (GSDNet) is designed to detect the graph structure of o
 
 ## TODO
 - [x] Basic Graph data structures and helpers
-- [ ] Remove everything not related to graphs
+- [x] Remove everything not related to graphs
 - [x] Visualization tools
 - [x] Encoder
 - [x] Dataset

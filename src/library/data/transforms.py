@@ -58,31 +58,6 @@ class Resize:
         return f"Resize(width: {self.width}, height: {self.height})"
 
 
-class RandomResize:
-
-    def __init__(self, args, ratios=None):
-        if ratios is None:
-            ratios = [1 + 1/16 * ratio for ratio in range(-4, 5)]
-
-        for ratio in ratios:
-            assert (ratio * 32) % 32 == 0, "Ratios should resolve to multiple of 32"
-
-        self.ratios = ratios
-        self.width = args.width
-        self.height = args.height
-
-    def __call__(self, input: PILImage, target: TreeAnnotation) -> tuple[PILImage, TreeAnnotation]:
-        ratio = self.ratios[torch.randint(len(self.ratios), (1,)).item()]
-        width, height = int(ratio * self.width), int(ratio * self.height)
-        image = F.resize(input, (height, width))
-        annotation = target.resize(input.size, (width, height))
-
-        return image, annotation
-
-    def __repr__(self) -> str:
-        return f"RandomResize(ratios: {self.ratios}, img_width: {self.width}, img_height: {self.height})"
-
-
 class Compose:
 
     def __init__(self, transforms):
@@ -101,7 +76,7 @@ class Compose:
 class Normalize:
 
     def __init__(self, mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]):
-        self.transform = torchtf.Normalize(mean=mean, std=std)
+        self.transform = torchtf.Normalize(mean=mean, std=std, inplace=True)
 
     def __call__(self, input: PILImage, target: TreeAnnotation) -> tuple[torch.Tensor, TreeAnnotation]:
         output = F.to_tensor(input)  # input is normalized in [0, 1]
@@ -166,7 +141,8 @@ class Encode:
             "offsets": offsets,
             "embeddings": embeddings,
             "inds": inds,
-            "off_mask": off_mask, "emb_mask": emb_mask}
+            "off_mask": off_mask, 
+            "emb_mask": emb_mask}
 
     def __repr__(self) -> str:
         return f"Encode(max_objects: {self.max_objects}, nb_labels: {len(self.labels)}, down_ratio: {self.down_ratio})"
@@ -227,11 +203,10 @@ class PredictionTransformation:
     def __init__(self, args):
         self.tf = torchtf.Compose([
             torchtf.Resize((args.height, args.width)),
-            torchtf.ToTensor(),
             torchtf.Normalize(
                 mean=[0.485, 0.456, 0.406],
-                std=[0.229, 0.224, 0.225])
-        ])
+                std=[0.229, 0.224, 0.225],
+                in_place=True)])
 
     def __call__(self, input):
         return self.tf(input)

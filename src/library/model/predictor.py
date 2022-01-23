@@ -1,6 +1,6 @@
 import torch
 from .network import Network
-from ..data import Decoder
+from ..data import Decoder, Graph
 import torchvision.transforms as torchtf
 
 
@@ -20,10 +20,11 @@ class Predictor(torch.nn.Module):
             torchtf.Resize((args.height, args.width)),
             torchtf.Normalize(
                 mean=[0.485, 0.456, 0.406],
-                std=[0.229, 0.224, 0.225]))
+                std=[0.229, 0.224, 0.225], 
+                in_place=True))
         self.transform.to(args.device)
 
-    def forward(self, image):
+    def forward(self, image: torch.Tensor) -> Graph:
         with torch.no_grad():
             input = image.to(self.args.device)
             input = self.transform(image)
