@@ -9,9 +9,9 @@ def main():
     assert args.pretrained_model, "No pretrained model specified. Use the option '--load_model <model_path>'."
     
     evaluator = Evaluator(args)
-    dataset = CropDataset(args, args.valid_dir, ValidationAugmentation(args))
+    dataset = Dataset(args.valid_dir, ValidationAugmentation(args))
     dataloader = torch.utils.data.DataLoader(dataset,
-        batch_size=1, collate_fn=CropDataset.collate_fn,
+        batch_size=1, collate_fn=Dataset.collate_fn,
         pin_memory=args.use_cuda,
         num_workers=args.num_workers)
 
@@ -29,16 +29,19 @@ def main():
         with torch.no_grad():
             output = net(batch["image"])
 
-        data = decoder(output, return_metadata=True)
-        prediction = data["annotation"][0]
-        annotation = batch["annotation"][0]
-        evaluator.accumulate(prediction, annotation, data["raw_parts"][0], True, True)
+        ground_truth = batch["annotation"][0].to_graph()
+        ground_truth = ground_truth.resized((args.width, args.height), ground_truth.image_size)
+
+        predicted_graph = decoder(output)[0]
+        prediction = GraphAnnotation(
+            ground_truth.image_path, 
+            predicted_graph, 
+            ground_truth.image_size)
+        prediction = prediction.resized((args.width, args.height), prediction.image_size)
+
+        evaluator.evaluate(prediction, ground_truth)
 
     evaluator.pretty_print()
-    # evaluator.classification_eval.reduce().save_conf_matrix()
-
-    if args.csv_path is not None:
-        evaluator.save_kps_csv(args.csv_path)
 
 
 if __name__ == "__main__":
