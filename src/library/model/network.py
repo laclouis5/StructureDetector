@@ -2,6 +2,8 @@ import torch
 import torch.nn as nn
 import torchvision
 
+from library.utils.utils import clamped_sigmoid
+
 
 class Fpn(nn.Module):
 
@@ -73,7 +75,7 @@ class Network(nn.Module):
         nb_hm = self.label_count  # M
 
         return {  # R = 4
-            "heatmaps": out[:, :self.label_count],  # (B, M, H/R, W/R)
+            "heatmaps": clamped_sigmoid(out[:, :self.label_count]),  # (B, M, H/R, W/R)
             "offsets": out[:, nb_hm:(nb_hm + 2)],  # (B, 2, H/R, W/R)
             "embeddings": out[:, (nb_hm + 2):(nb_hm + 4)]}  # (B, 2, H/R, W/R)
 

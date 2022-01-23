@@ -47,12 +47,12 @@ class Dataset(data.Dataset):
             file.write_text(json.dumps(annotation, indent=2))
 
     @staticmethod
-    def collate_fn(elements):
+    def collate_fn(elements: list[dict]):
         return {
             "image": torch.stack([element["image"] for element in elements], dim=0),
             "annotation": [element["annotation"] for element in elements],
             "heatmaps": torch.stack([element["heatmaps"] for element in elements], dim=0),
-            "offset": torch.stack([element["offset"] for element in elements], dim=0),
+            "offsets": torch.stack([element["offsets"] for element in elements], dim=0),
             "embeddings": torch.stack([element["embeddings"] for element in elements], dim=0),
             "inds": torch.stack([element["inds"] for element in elements], dim=0),
             "off_mask": torch.stack([element["off_mask"] for element in elements], dim=0),

@@ -12,7 +12,7 @@ def main():
 
     Path("~/Downloads/ann.json").expanduser().write_text(json.dumps(ann.json_repr(), indent=2))
 
-    img = draw_graph(img, ann.to_graph())
+    img = draw_tree(img, ann.tree)
     img.show()
     
 

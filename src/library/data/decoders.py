@@ -25,8 +25,7 @@ class Decoder:
         in_h, in_w = int(self.down_ratio * out_h), int(self.down_ratio * out_w)  # H, W
 
         # Keypoints
-        anchor_hm_sig = clamped_sigmoid(heatmaps)  # (B, M, H/R, W/R)
-        anchor_hm = nms(anchor_hm_sig)  # (B, M, H/R, W/R)
+        anchor_hm = nms(heatmaps)  # (B, M, H/R, W/R)
         anchor_scores, anchor_inds, anchor_labels, anchor_ys, anchor_xs = topk(
             anchor_hm, k=self.max_objects)  # (B, K)
         anchor_offsets = transpose_and_gather(offsets, anchor_inds)  # (B, K, 2)

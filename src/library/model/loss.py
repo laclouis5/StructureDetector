@@ -14,11 +14,9 @@ class Loss(nn.Module):
         self.reg_loss = L1Loss()
         self.stats = LossStats()
 
-    def forward(self, input, target) -> torch.Tensor:
-        heatmaps = clamped_sigmoid(input["heatmaps"])
-
+    def forward(self, input: dict, target: dict) -> torch.Tensor:
         hm_loss = self.args.hm_weight * ( \
-            self.hm_loss(heatmaps, target["heatmaps"]))
+            self.hm_loss(input["heatmaps"], target["heatmaps"]))
 
         offset_loss = self.args.offset_weight * ( \
             self.reg_loss(
@@ -146,5 +144,5 @@ class LossStats:
         self.embedding_loss /= value
         return self
 
-    def __repr__(self):
-        f"total_loss: {self.total_loss}, hm_loss: {self.hm_loss}, offset_loss: {self.offset_loss}, embedding_loss: {self.embedding_loss}"
+    def __repr__(self) -> str:
+        return f"total_loss: {self.total_loss}, hm_loss: {self.hm_loss}, offset_loss: {self.offset_loss}, embedding_loss: {self.embedding_loss}"

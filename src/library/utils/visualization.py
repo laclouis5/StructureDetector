@@ -12,10 +12,9 @@ def un_normalize(tensor: torch.Tensor) -> torch.Tensor:  # (B, 3, H, W)
     return tensor * std + mean
 
 
-def draw_graph(image: PILImage, annotation: GraphAnnotation) -> PILImage:
+def draw_graph(image: PILImage, graph: Graph) -> PILImage:
     image = image.copy()
     draw = ImageDraw.Draw(image)
-    graph = annotation.graph
 
     img_size = image.size
     radius = int(min(img_size) * 0.5/100)
@@ -40,8 +39,8 @@ def draw_graph(image: PILImage, annotation: GraphAnnotation) -> PILImage:
     return image
 
 
-def draw_tree(image: PILImage, annotation: TreeAnnotation) -> PILImage:
-    return draw_graph(image, annotation.to_graph())
+def draw_tree(image: PILImage, tree: Tree) -> PILImage:
+    return draw_graph(image, tree.to_graph())
 
 
 # anchor_hm: (M, H, W)

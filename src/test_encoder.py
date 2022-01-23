@@ -13,7 +13,7 @@ def main():
     im, ann = data["image"], data["annotation"]
     im = un_normalize(im)
     im = ToPILImage()(im)
-    im = draw_tree(im, ann)
+    im = draw_tree(im, ann.tree)
     im.show()
 
     # # Heatmaps
