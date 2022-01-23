@@ -1,3 +1,4 @@
+from numpy import short
 import torch
 import torch.nn as nn
 import torchvision
@@ -7,7 +8,7 @@ from library.utils.utils import clamped_sigmoid
 
 class Fpn(nn.Module):
 
-    def __init__(self, in_channels, out_channels):
+    def __init__(self, in_channels: int, out_channels: int):
         super().__init__()
 
         self.up = nn.Upsample(scale_factor=2)
@@ -17,18 +18,26 @@ class Fpn(nn.Module):
             nn.BatchNorm2d(out_channels),
             nn.ReLU(inplace=True))
 
-    def forward(self, input, shortcut):
+    def forward(self, input: torch.Tensor, shortcut: torch.Tensor) -> torch.Tensor:
         return self.conv(self.up(input) + self.lateral(shortcut))
+
+
+class FPNTop(Fpn):
+
+    def forward(self, input: torch.Tensor, shortcut: torch.Tensor) -> torch.Tensor:
+        input = self.up(input)
+        shortcut = self.lateral(self.up(shortcut))
+        return self.conv(input + shortcut)
 
 
 class Head(nn.Module):
 
-    def __init__(self, in_channels, out_channels):
+    def __init__(self, in_channels: int, out_channels: int):
         super().__init__()
 
         self.conv = nn.Conv2d(in_channels, out_channels, kernel_size=1)
 
-    def forward(self, input):
+    def forward(self, input: torch.Tensor) -> torch.Tensor:
         return self.conv(input)
 
 
@@ -55,9 +64,11 @@ class Network(nn.Module):
         self.up3 = Fpn(128, self.fpn_depth)  # x2 -> /8
         self.up4 = Fpn(64, self.fpn_depth)  # x2 -> /4
 
+        # self.up5 = FPNTop(64, self.fpn_depth)  # x2 -> /2
+
         self.head = Head(self.fpn_depth, self.out_channels)
 
-    def forward(self, x):  # (B, 3, H, W)
+    def forward(self, x: torch.Tensor) -> dict[torch.Tensor]:  # (B, 3, H, W)
         p1 = self.adpater(x)  # (B, 64, H/4, W/4)
 
         p2 = self.down1(p1)  # (B, 64, H/4, W/4)
@@ -70,7 +81,10 @@ class Network(nn.Module):
         f2 = self.up3(f3, p3)  # (B, 128, H/8, W/8)
         f1 = self.up4(f2, p2)  # (B, 128, H/4, W/4)
 
-        out = self.head(f1)  # (B, M+N+4, H/4, W/4)
+        # f0 = self.up5(f1, p1)  # (B, 64, H/2, W/2)
+        # out = self.head(f0)  # (B, M+4, H/2, W/2)
+
+        out = self.head(f1)  # (B, M+4, H/4, W/4)
 
         nb_hm = self.label_count  # M
 

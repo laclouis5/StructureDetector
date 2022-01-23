@@ -25,50 +25,37 @@ class Decoder:
         in_h, in_w = int(self.down_ratio * out_h), int(self.down_ratio * out_w)  # H, W
 
         # Keypoints
-        anchor_hm = nms(heatmaps)  # (B, M, H/R, W/R)
-        anchor_scores, anchor_inds, anchor_labels, anchor_ys, anchor_xs = topk(
-            anchor_hm, k=self.max_objects)  # (B, K)
-        anchor_offsets = transpose_and_gather(offsets, anchor_inds)  # (B, K, 2)
-        anchor_xs += anchor_offsets[..., 0]  # (B, K)
-        anchor_ys += anchor_offsets[..., 1]  # (B, K)
+        heatmaps = nms(heatmaps)  # (B, M, H/R, W/R)
+        scores, inds, labels, pos = topk(heatmaps, k=self.max_objects)
+        offsets = transpose_and_gather(offsets, inds)  # (B, K, 2)
+        pos_kps = pos + offsets  # (B, K, 2)
 
-        anchor_out = torch.stack((
-            anchor_xs, anchor_ys,
-            anchor_scores, anchor_labels.float()
-        ), dim=2)  # (B, K, 4)
+        raw_keypoints = torch.stack((*pos_kps, scores, labels.float()), dim=2)  # (B, K, 4)
 
         # Embeddings
-        # TODO: Check if valid! (anchor_inds, ...)
-        embeddings = transpose_and_gather(embeddings, anchor_inds)  # (B, K, 2)
-        origin_xs = anchor_xs + embeddings[..., 0]  # (B, K)
-        origin_ys = anchor_ys + embeddings[..., 1]  # (B, K)
+        embeddings = transpose_and_gather(embeddings, inds)  # (B, K, 2)
+        pos_proj_kps = pos + embeddings  # (B, K, 2)
 
         # Association
-        # TODO: Check if valid (anchor_mask for ori_xs)
-        anchor_mask = (anchor_scores > conf_thresh).float()  # (B, K)
-        anchor_scores = -(1 - anchor_mask) + anchor_mask * anchor_scores  # (B, K)
-        pos_xs = (1e6*(1 - anchor_mask) + anchor_mask * anchor_xs)  # (B, K)
-        pos_ys = (1e6*(1 - anchor_mask) + anchor_mask * anchor_ys)  # (B, K)
+        mask = (scores > conf_thresh).float()  # (B, K)
+        scores = -(1 - mask) + mask * scores  # (B, K) 
+        pos_kps = (1e6*(1 - mask) + mask * pos_kps)  # (B, K, 2)
+        pos_proj_kps = (-1e6*(1 - mask) + mask * pos_proj_kps)  # (B, K, 2)
 
-        ori_xs = (-1e6*(1 - anchor_mask) + anchor_mask * origin_xs)  # (B, K)
-        ori_ys = (-1e6*(1 - anchor_mask) + anchor_mask * origin_ys)  # (B, K)
+        pos_kps_mat = pos_kps.unsqueeze(2).expand(-1, -1, self.max_objects, -1)  # (B, K, K, 2)
+        pos_proj_kps_mat = pos_proj_kps.unsqueeze(1).expand(-1, self.max_objects, -1, -1)  # (B, K, K, 2)
 
-        anchor_pos = torch.stack((pos_xs, pos_ys), dim=-1)  # (B, K, 2)
-        origins = torch.stack((ori_xs, ori_ys), dim=-1)  # (B, K, 2)
-
-        anchor_pos = anchor_pos.unsqueeze(2).expand(-1, -1, self.max_objects, -1)  # (B, K, K, 2)
-        origins = origins.unsqueeze(1).expand(-1, self.max_objects, -1, -1)  # (B, K, K, 2)
-
-        sq_distance = torch.hypot(*torch.unbind(origins - anchor_pos, dim=-1))  # (B, K, K)
-        min_vals, min_inds = sq_distance.min(dim=1)  # (B, K)
-        min_vals = min_vals < (dist_thresh * min(out_w, out_h))  # (B, K)
+        sq_distance = torch.hypot(*torch.unbind(pos_kps_mat - pos_proj_kps_mat, dim=-1))  # (B, K, K)
+        
+        distances, connections = sq_distance.min(dim=1)  # (B, K)
+        is_close_enough = distances < (dist_thresh * min(out_w, out_h))  # (B, K)
 
         # Assemble
         graphs = []
-        batch_size = min_vals.shape[0]
+        batch_size = distances.shape[0]
         for batch_index in range(batch_size):
             graph = Graph()
-            batch_keypoints = anchor_out[batch_index]  # (K, 4)
+            batch_keypoints = raw_keypoints[batch_index]  # (K, 4)
             keypoints = dict[int, Keypoint]()
 
             for kp_index, kp_data in enumerate(batch_keypoints):
@@ -80,9 +67,9 @@ class Decoder:
                     keypoints[kp_index] = keypoint
                     graph.add(keypoint)
 
-            batch_connections = min_inds[batch_index]
+            batch_connections = connections[batch_index]
             for kp_index, conn_kp_index in enumerate(batch_connections):
-                if min_vals[batch_index, kp_index]:
+                if is_close_enough[batch_index, kp_index]:
                     kp1 = keypoints[kp_index]
                     kp2 = keypoints[int(conn_kp_index)]
                     graph.connect(kp1, kp2)
