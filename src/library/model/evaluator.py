@@ -35,40 +35,35 @@ class Evaluation:
         return copy_
 
     @property
-    def fp(self):
+    def fp(self) -> int:
         return self.ndet - self.tp
 
     @property
-    def fn(self):
+    def fn(self) -> int:
         return self.npos - self.tp
 
     @property
-    def csi(self):
-        denominator = self.npos + self.ndet - self.tp
-        return self.tp / denominator if denominator != 0 else 1
-
-    @property
-    def precision(self):
+    def precision(self) -> float:
         return self.tp / self.ndet if self.ndet != 0 else 1 if self.npos == 0 else 0
 
     @property
-    def recall(self):
+    def recall(self) -> float:
         return self.tp / self.npos if self.npos != 0 else 1 if self.ndet == 0 else 0
 
     @property
-    def f1_score(self):
+    def f1_score(self) -> float:
         s = self.npos + self.ndet
         return 2 * self.tp / s if s != 0 else 1
 
     @property
-    def avg_acc(self):
+    def avg_acc(self) -> float:
         return np.mean(self.acc) if len(self.acc) != 0 else float("nan")
 
     @property
-    def acc_err(self):
+    def acc_err(self) -> float:
         return np.std(self.acc) / np.sqrt(len(self.acc)) if len(self.acc) != 0 else float("nan")
         
-    def stats(self):
+    def stats(self) -> str:
         return f"{self.npos}", f"{self.ndet}", f"{self.recall:.2%}", f"{self.precision:.2%}", f"{self.f1_score:.2%}", f"{self.avg_acc:.4%}", f"{self.acc_err:.4%}"
 
     @staticmethod
@@ -82,7 +77,7 @@ class Evaluation:
             Column("L. Acc.", justify="right"), 
             Column("L. Err.", justify="right"))
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"f1: {self.f1_score:.2%}, rec: {self.recall:.2%}, prec: {self.precision:.2%}, npos: {self.npos}, ndet: {self.ndet}, tp/fp/fn: {self.tp}/{self.fp}/{self.fn}, avg_acc: {self.avg_acc:.2}"
 
     def pretty_print(self):
@@ -108,7 +103,7 @@ class Evaluation:
 class Evaluations:
 
     def __init__(self, labels=None):
-        self.evals = {label: Evaluation() for label in labels} if labels else {}
+        self.evals: dict[str, Evaluation] = {label: Evaluation() for label in labels} if labels else {}
 
     def reset(self):
         for label in self.evals.keys():
@@ -121,29 +116,29 @@ class Evaluations:
     def items(self):
         return self.evals.items()
 
-    def __getitem__(self, label):
+    def __getitem__(self, label: str) -> Evaluation:
         return self.evals[label]
 
-    def __setitem__(self, index, item):
+    def __setitem__(self, index: str, item: Evaluation):
         self.evals[index] = item
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self.evals)
 
-    def __add__(self, other):
+    def __add__(self, other: "Evaluations") -> "Evaluations":
         assert self.labels == other.labels, "The Evaluations should have the same labels"
         evaluations = Evaluations()
         evaluations.evals = {label: self.evals[label] + evaluation 
             for label, evaluation in other.items()}
         return evaluations
 
-    def __iadd__(self, other):
+    def __iadd__(self, other: "Evaluations") -> "Evaluations":
         assert self.labels == other.labels, "The Evaluations should have the same labels"
         for label, evaluation in other.items():
             self.evals[label] += evaluation
         return self
 
-    def __or__(self, other):
+    def __or__(self, other: "Evaluations") -> "Evaluations":
         output = Evaluations()
         output.evals = {label: self[label] + other[label] 
             for label in self.labels & other.labels}
@@ -153,17 +148,17 @@ class Evaluations:
             for label in other.labels - self.labels})
         return output
 
-    def __ior__(self, other):
+    def __ior__(self, other: "Evaluations") -> "Evaluations":
         self |= {label: other[label] 
             for label in other.labels - self.labels}
         self |= {label: self[label] + other[label] 
             for label in self.labels & other.labels}
         return self
 
-    def reduce(self):
+    def reduce(self) -> Evaluation:
         return reduce(Evaluation.__iadd__, self.evals.values(), Evaluation())
 
-    def pretty_print(self, table_name=None):
+    def pretty_print(self, table_name: str = None):
         table = Table("Label", *Evaluation.columns(), title=table_name)
         for label, evaluation in self.items():
             table.add_row(label, *evaluation.stats())
@@ -190,11 +185,11 @@ class Evaluator:
     def reset(self):
         self.keypoint_evaluation = Evaluations(self.labels)
 
-    def accumulate(self, prediction: Graph, annotation: Graph):
+    def evaluate(self, prediction: Graph, annotation: Graph):
         """Assumes 'prediction' and 'annotation' are in the original input image resolution."""
-        self.evaluate_keypoints(prediction, annotation)
+        self._evaluate_keypoints(prediction, annotation)
 
-    def evaluate_keypoints(self, prediction: GraphAnnotation, annotation: GraphAnnotation):
+    def _evaluate_keypoints(self, prediction: GraphAnnotation, annotation: GraphAnnotation):
         img_size = annotation.image_size
         pred_graph = prediction.graph
         gt_graph = annotation.graph

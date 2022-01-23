@@ -26,19 +26,16 @@ class Trainer:
         self.writer = SummaryWriter()
         self.global_step = 0
         self.best_loss = torch.finfo().max
-        self.best_csi = 0.0
-        self.best_classif = 0.0
         self.best_kp_reg = 0.0
 
         # TODO: Test this.
         if args.pretrained_model:
             self.net.load_state_dict(torch.load(args.pretrained_model, map_location=args.device))
 
-        if torch.cuda.device_count() > 1:
-            self.net = nn.DataParallel(self.net)
-
         self.net.to(args.device)
         self.loss.to(args.device)
+
+        # TODO: Add Apex mixed precision computing for faster training and inference
 
         self.optimizer = torch.optim.Adam(self.net.parameters(), args.learning_rate)
         self.scheduler = torch.optim.lr_scheduler.StepLR(self.optimizer, step_size=args.lr_step)
@@ -47,17 +44,19 @@ class Trainer:
         self.train_dataloader = data.DataLoader(self.train_set,
             batch_size=args.batch_size, collate_fn=Dataset.collate_fn, shuffle=True,
             pin_memory=args.use_cuda,
-            num_workers=args.num_workers,
+            num_workers=args.num_workers, 
+            persistent_workers=True,
             drop_last=True)
 
         self.valid_set = Dataset(args, args.valid_dir, transforms=ValidationAugmentation(args))
         self.valid_dataloader = data.DataLoader(self.valid_set,
             batch_size=1, collate_fn=Dataset.collate_fn, shuffle=True,
             pin_memory=args.use_cuda,
+            persistent_workers=True,
             num_workers=args.num_workers)
 
         # Logging
-        self.save_dir = Path("trainings") / f"{datetime.now():%Y-%m-%d_%H-%M-%s}"
+        self.save_dir = Path("trainings/") / f"{datetime.now():%Y-%m-%d_%H-%M-%S}"
         mkdir_if_needed("trainings/")
         mkdir_if_needed(self.save_dir)
 
@@ -104,10 +103,17 @@ class Trainer:
             with torch.no_grad():
                 output = self.net(batch["image"])
 
-            data = self.decoder(output, return_metadata=True)
-            prediction = data["annotation"][0]
-            annotation = batch["annotation"][0]
-            self.evaluator.accumulate(prediction, annotation, data["raw_parts"][0], eval_csi=True, eval_classif=True)
+            ground_truth = batch["annotation"][0].to_graph()
+            ground_truth.resize((args.width, args.height), ground_truth.image_size)
+
+            predicted_graph = self.decoder(output)[0]
+            prediction = GraphAnnotation(
+                ground_truth.image_path, 
+                predicted_graph, 
+                ground_truth.image_size)
+            prediction.resize((args.width, args.height), prediction.image_size)
+
+            self.evaluator.evaluate(prediction, ground_truth)
 
             self.loss(output, batch)
             loss_stats += self.loss.stats
@@ -115,89 +121,38 @@ class Trainer:
         loss_stats /= len(self.valid_dataloader)
 
         # Compute metrics
-        all_anchor_evals = self.evaluator.anchor_eval.reduce()
-        anchor_prec = {label: eval.precision for (label, eval) in self.evaluator.anchor_eval.items()}
-        anchor_prec["total"] = all_anchor_evals.precision
-        anchor_rec = {label: eval.recall for (label, eval) in self.evaluator.anchor_eval.items()}
-        anchor_rec["total"] = all_anchor_evals.recall
-        anchor_f1 = {label: eval.f1_score for (label, eval) in self.evaluator.anchor_eval.items()}
-        anchor_f1["total"] = all_anchor_evals.f1_score
-
-        all_part_evals = self.evaluator.part_eval.reduce()
-        part_prec = {label: eval.precision for (label, eval) in self.evaluator.part_eval.items()}
-        part_prec["total"] = all_part_evals.precision
-        part_rec = {label: eval.recall for (label, eval) in self.evaluator.part_eval.items()}
-        part_rec["total"] = all_part_evals.recall
-        part_f1 = {label: eval.f1_score for (label, eval) in self.evaluator.part_eval.items()}
-        part_f1["total"] = all_part_evals.f1_score
-
-        f1_csi = {label: eval.f1_score for (label, eval) in self.evaluator.csi_eval.items()}
-        f1_csi["total"] = self.evaluator.csi_eval.reduce().f1_score
-
-        f1_classif = {label: eval.f1_score for (label, eval) in self.evaluator.classification_eval.items()}
-        f1_classif["total"] = self.evaluator.classification_eval.reduce().f1_score
-
-        all_kps = self.evaluator.kps_eval
-        all_kps_evals = all_kps.reduce()
-        kps_prec = {label: eval.precision for label, eval in all_kps.items()}
-        kps_prec["total"] = all_kps_evals.precision
-        kps_rec = {label: eval.recall for label, eval in all_kps.items()}
-        kps_rec["total"] = all_kps_evals.recall
-        kps_f1 = {label: eval.f1_score for label, eval in all_kps.items()}
-        kps_f1["total"] = all_kps_evals.f1_score
-
-        f1_kp_reg = all_kps_evals.f1_score
+        evaluations = self.evaluator.keypoint_evaluation
+        total = evaluations.reduce()  # Old total which is a sum (rather than an average)
+        kps_prec = {label: eval.precision for label, eval in evaluations.items()}
+        kps_prec["total"] = total.precision
+        kps_rec = {label: eval.recall for label, eval in evaluations.items()}
+        kps_rec["total"] = total.recall
+        kps_f1 = {label: eval.f1_score for label, eval in evaluations.items()}
+        kps_f1["total"] = total.f1_score
 
         # Save best network
+        f1_kp_reg = total.f1_score
         if loss_stats.total_loss < self.best_loss:
             self.best_loss = loss_stats.total_loss
             self.net.save(self.save_dir / "model_best_loss.pth")
-        if f1_csi["total"] > self.best_csi:
-            self.best_csi = f1_csi["total"]
-            self.net.save(self.save_dir / "model_best_csi.pth")
-        if f1_classif["total"] > self.best_classif:
-            self.best_classif = f1_classif["total"]
-            self.net.save(self.save_dir / "model_best_classif.pth")
         if f1_kp_reg > self.best_kp_reg:
             self.best_kp_reg = f1_kp_reg
             self.net.save(self.save_dir / "model_best_kp_reg.pth")
 
         # Draw metrics to Tensorboard
         self.writer.add_scalars("Loss/Validation", loss_stats.__dict__, self.global_step)
-        self.writer.add_scalars("Metrics_AllKps/Precison", kps_prec, self.global_step)
-        self.writer.add_scalars("Metrics_AllKps/Recall", kps_rec, self.global_step)
-        self.writer.add_scalars("Metrics_AllKps/F1", kps_f1, self.global_step)
-        self.writer.add_scalars("Metrics_Anchor/Precision", anchor_prec, self.global_step)
-        self.writer.add_scalars("Metrics_Anchor/Recall", anchor_rec, self.global_step)
-        self.writer.add_scalars("Metrics_Anchor/f1", anchor_f1, self.global_step)
-        self.writer.add_scalars("Metrics_Parts/Precision", part_prec, self.global_step)
-        self.writer.add_scalars("Metrics_Parts/Recall", part_rec, self.global_step)
-        self.writer.add_scalars("Metrics_Parts/f1", part_f1, self.global_step)
-        self.writer.add_scalars("Metrics_CSI/f1", f1_csi, self.global_step)
-        self.writer.add_scalars("Metrics_Classif/f1", f1_classif, self.global_step)
+        self.writer.add_scalars("Keypoint Evaluation/Precison", kps_prec, self.global_step)
+        self.writer.add_scalars("Keypoint Evaluation/Recall", kps_rec, self.global_step)
+        self.writer.add_scalars("Keypoint Evaluation/F1", kps_f1, self.global_step)
 
         # Draw ground truth annotation
-        annotation_img = draw(batch["image"][0], annotation, self.args)
-        self.writer.add_image("Detections/Ground_Truth", F.to_tensor(annotation_img), self.global_step)
+        image = batch["image"][0]  # Last image
+        image = un_normalize(image)
+        image = F.to_pil_image(image)
 
-        # Draw network prediction
-        prediction_img = draw(batch["image"][0], prediction, self.args)
-        self.writer.add_image("Detections/Prediction", F.to_tensor(prediction_img), self.global_step)
+        graph = predicted_graph  # Last predicted graph
 
-        # Draw ground truth anchor and part heatmaps
-        anchor_hm_img, part_hm_img = draw_heatmaps(batch["anchor_hm"][0], batch["part_hm"][0], self.args)
-        self.writer.add_image("Heatmaps/Ground_Truth/Anchors", anchor_hm_img, self.global_step)
-        self.writer.add_image("Heatmaps/Ground_Truth/Parts", part_hm_img, self.global_step)
+        output = draw_graph(image, graph)
+        output = F.to_tensor(output)
 
-        # Draw predicted anchor and part heatmaps
-        anchor_hm_img, part_hm_img = draw_heatmaps(data["anchor_hm_sig"][0], data["part_hm_sig"][0], self.args)
-        self.writer.add_image("Heatmaps/Predictions/Anchors", anchor_hm_img, self.global_step)
-        self.writer.add_image("Heatmaps/Predictions/Parts", part_hm_img, self.global_step)
-
-        # Draw raw predictions
-        pred_parts = draw_kp_and_emb(batch["image"][0], data["topk_anchor"], data["topk_kp"], data["embeddings"], self.args)
-        self.writer.add_image("Other/Raw_Predictions", F.to_tensor(pred_parts), self.global_step)
-
-        # Draw raw embeddings
-        raw_embs_img = draw_embeddings(batch["image"][0], data["raw_embeddings"], self.args)
-        self.writer.add_image("Other/Raw_Embeddings", F.to_tensor(raw_embs_img), self.global_step)
+        self.writer.add_image("Prediction", output, self.global_step)

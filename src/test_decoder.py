@@ -1,6 +1,8 @@
 from library import *
 from torch.utils.data import DataLoader
 
+from library.model.evaluator import Evaluations
+
 
 class NetworkMock:
 
@@ -51,22 +53,37 @@ def main():
     net_mock = NetworkMock()
     
     # Loss
-    loss_fn = Loss(args)
+    # loss_fn = Loss(args)
 
     data = next(iter(dataset))
     out = net_mock(data)
 
-    _ = loss_fn(input=out, target=data)
-    print(loss_fn.stats)
+    # _ = loss_fn(input=out, target=data)
+    # print(loss_fn.stats)
 
     # Decoder
     decoder = Decoder(args)
     graph = decoder(out)[0]
-    im = data["image"][0]
-    im = un_normalize(im)
-    im = F.to_pil_image(im)
-    im = draw_graph(im, graph)
-    im.show()
+    # im = data["image"][0]
+    # im = un_normalize(im)
+    # im = F.to_pil_image(im)
+    # im = draw_graph(im, graph)
+    # im.show()
+
+    # Evaluator
+    evaluator = Evaluator(args)
+    gt = data["annotation"][0].to_graph()
+    
+    img_size = gt.image_size
+    net_out_size = args.width, args.height
+    image_path = gt.image_path
+
+    gt.resize(net_out_size, img_size)
+    pred = GraphAnnotation(image_path, graph, image_path)
+    pred.resize(net_out_size, img_size)
+
+    evaluator.evaluate_keypoints(pred, gt)
+    evaluator.pretty_print()
 
 
 if __name__ == "__main__":

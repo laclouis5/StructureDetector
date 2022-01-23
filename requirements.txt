@@ -2,6 +2,7 @@ numpy
 Pillow
 torch
 torchvision
+apex
 tensorboard
 tqdm
 rich
