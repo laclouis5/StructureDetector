@@ -4,5 +4,6 @@ torch
 torchvision
 apex
 tensorboard
+torch-tb-profiler
 tqdm
 rich

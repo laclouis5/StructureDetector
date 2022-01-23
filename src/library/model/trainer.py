@@ -40,7 +40,7 @@ class Trainer:
         self.optimizer = torch.optim.Adam(self.net.parameters(), args.learning_rate)
         self.scheduler = torch.optim.lr_scheduler.StepLR(self.optimizer, step_size=args.lr_step)
 
-        self.train_set = Dataset(args, args.train_dir, transforms=TrainAugmentation(args))
+        self.train_set = Dataset(args.train_dir, transforms=TrainAugmentation(args))
         self.train_dataloader = data.DataLoader(self.train_set,
             batch_size=args.batch_size, collate_fn=Dataset.collate_fn, shuffle=True,
             pin_memory=args.use_cuda,
@@ -48,7 +48,7 @@ class Trainer:
             persistent_workers=True,
             drop_last=True)
 
-        self.valid_set = Dataset(args, args.valid_dir, transforms=ValidationAugmentation(args))
+        self.valid_set = Dataset(args.valid_dir, transforms=ValidationAugmentation(args))
         self.valid_dataloader = data.DataLoader(self.valid_set,
             batch_size=1, collate_fn=Dataset.collate_fn, shuffle=True,
             pin_memory=args.use_cuda,
@@ -86,9 +86,9 @@ class Trainer:
             self.writer.add_scalars("Loss/Train", self.loss.stats.__dict__, self.global_step)
             self.global_step += self.args.batch_size
 
-        self.writer.add_scalar("Learning rate", self.optimizer.param_groups[0]["lr"], self.global_step)
         self.scheduler.step()
         self.train_set.transform.trigger_random_resize()
+        self.writer.add_scalar("Learning rate", self.optimizer.param_groups[0]["lr"], self.global_step)
 
     def valid(self):
         self.net.eval()
@@ -104,14 +104,14 @@ class Trainer:
                 output = self.net(batch["image"])
 
             ground_truth = batch["annotation"][0].to_graph()
-            ground_truth.resize((args.width, args.height), ground_truth.image_size)
+            ground_truth.resize((self.args.width, self.args.height), ground_truth.image_size)
 
             predicted_graph = self.decoder(output)[0]
             prediction = GraphAnnotation(
                 ground_truth.image_path, 
                 predicted_graph, 
                 ground_truth.image_size)
-            prediction.resize((args.width, args.height), prediction.image_size)
+            prediction.resize((self.args.width, self.args.height), prediction.image_size)
 
             self.evaluator.evaluate(prediction, ground_truth)
 
