@@ -7,7 +7,7 @@ def main():
     args = Arguments().parse()
     assert args.valid_dir, "Path to a directory with validation samples must be specified."
 
-    dataset = Dataset(args, args.valid_dir)
+    dataset = Dataset(args.valid_dir)
     img, ann = dataset[0]
 
     Path("~/Downloads/ann.json").expanduser().write_text(json.dumps(ann.json_repr(), indent=2))

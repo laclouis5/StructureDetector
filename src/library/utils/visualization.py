@@ -1,5 +1,5 @@
 from .utils import *
-from PIL import ImageDraw, ImageOps
+from PIL import ImageDraw, ImageOps, Image
 from PIL.Image import Image as PILImage
 import torchvision.transforms.functional as F
 import torch
@@ -40,82 +40,38 @@ def draw_graph(image: PILImage, annotation: GraphAnnotation) -> PILImage:
     return image
 
 
-def draw_heatmaps(anchor_hm: torch.Tensor, part_hm: torch.Tensor, args) -> tuple[torch.Tensor, torch.Tensor]:
-    assert anchor_hm.dim() == 3 and part_hm.dim() == 3, "Do not send batched data to this function, only one sample"
-
-    (c1, h, w) = anchor_hm.shape
-    c2 = part_hm.shape[0]
-
-    obj_colors = torch.tensor([args._label_color_map.get(args._r_labels.get(i, None), (0, 0, 0)) for i in range(c1)], device=anchor_hm.device)
-    part_colors = torch.tensor([args._part_color_map.get(args._r_parts.get(i, None), (0, 0, 0)) for i in range(c2)], device=part_hm.device)
-
-    obj_colors = obj_colors[..., None, None].expand(-1, -1, h, w)
-    part_colors = part_colors[..., None, None].expand(-1, -1, h, w)
-
-    (anchor_hm_max, obj_inds) = torch.max(anchor_hm, 0)
-    (part_hm_max, part_inds) = torch.max(part_hm, 0)
-    obj_inds = obj_inds[None, None, ...].expand(-1, 3, -1, -1)
-    part_inds = part_inds[None, None, ...].expand(-1, 3, -1, -1)
-
-    anchor_hm_color = torch.gather(obj_colors, dim=0, index=obj_inds).squeeze()
-    part_hm_color = torch.gather(part_colors, dim=0, index=part_inds).squeeze()
-
-    anchor_hm_color = anchor_hm_color.float() * anchor_hm_max
-    part_hm_color = part_hm_color.float() * part_hm_max
-
-    return anchor_hm_color.type(torch.uint8), part_hm_color.type(torch.uint8)
+def draw_tree(image: PILImage, annotation: TreeAnnotation) -> PILImage:
+    return draw_graph(image, annotation.to_graph())
 
 
-def draw_kp_and_emb(
-    image: PILImage, topk_obj: torch.Tensor, topk_kp: torch.Tensor, embeddings: torch.Tensor, args
-):
-    thresh = args.conf_threshold
+# anchor_hm: (M, H, W)
+def draw_heatmaps(anchor_hm: torch.Tensor, args) -> PILImage:
+    assert anchor_hm.dim() == 3, "Do not send batched data to this function, only one sample"
 
-    img = un_normalize(image.cpu())
-    img = F.to_pil_image(img)  # This converts from [0, 1] to [0, 255]
-    draw = ImageDraw.Draw(img)
-    (img_w, img_h) = img.size
-    offset = int(min(img_w, img_h) * 1/100)
-    thickness = int(min(img_w, img_h) * 1/100)
+    c, h, w = anchor_hm.shape  # (M, H, W)
 
-    obj_scores, _, obj_labels, obj_ys, obj_xs = topk_obj
-    part_scores, _, part_labels, part_ys, part_xs = topk_kp
+    obj_colors = torch.tensor(
+        [unique_color(label) for label in args.labels],
+        device=anchor_hm.device)  # (M, 3)
 
-    for (x, y, label, score) in zip(obj_xs.squeeze(0), obj_ys.squeeze(0), obj_labels.squeeze(0), obj_scores.squeeze(0)):
-        if score < thresh: continue
-        color = args._label_color_map[args._r_labels[label.item()]]
+    output = torch.zeros(c, 3, h, w)  # (M, 3, H, W)
+    for i, hm in enumerate(anchor_hm):  # (H, W)
+        color = obj_colors[i]  # (3)
+        hm = hm[None, ...] * color[:, None, None]  # (3, H, W)
+        output[i, ...] = hm
 
-        x *= args.down_ratio
-        y *= args.down_ratio
-
-        draw.ellipse([x - offset, y - offset, x + offset, y + offset],
-            fill=color, outline=color)
-
-    for (x, y, label, score, embeddings) in zip(part_xs.squeeze(0), part_ys.squeeze(0), part_labels.squeeze(0), part_scores.squeeze(0), embeddings.squeeze(0)):
-        if score < thresh: continue
-        color = args._part_color_map[args._r_parts[label.item()]]
-
-        x *= args.down_ratio
-        y *= args.down_ratio
-
-        e_x = x + args.down_ratio * embeddings[0]
-        e_y = y + args.down_ratio * embeddings[1]
-
-        draw.ellipse([x - offset, y - offset, x + offset, y + offset],
-            fill=color, outline=color)
-
-        draw.line([x, y, e_x, e_y], fill=color, width=thickness)
-
-    return img
+    output = output.mean(dim=0)  # (3, H, W)
+    output = output / output.max() * 255
+    return F.to_pil_image(output.type(torch.uint8))  # (3, H, W)
 
 
-def draw_embeddings(image, embeddings, args):
+def draw_embeddings(image: PILImage, embeddings: torch.Tensor, args) -> PILImage:
     assert embeddings.shape[0] == 1, "BS should be one"
+    image = image.copy()
+    draw = ImageDraw.Draw(image)
 
     embeddings = embeddings[0] * args.down_ratio  # (2, H, W)
     embeddings = embeddings.permute(1, 2, 0)  # (H, W, 2)
-    image = F.to_pil_image(un_normalize(image.cpu()))
-    draw = ImageDraw.Draw(image)
 
     thickness = int(min(image.size) * 0.5/100)
 
@@ -128,26 +84,5 @@ def draw_embeddings(image, embeddings, args):
             y2 = (embeddings[y, x, 1] + y1).item()
 
             draw.line([x1, y1, x2, y2], fill=(255, 0, 0), width=thickness)
-
-    return image
-    
-
-def draw_keypoints(image: PILImage, keypoints: Sequence[Keypoint], args) -> PILImage:
-    image = image.copy()
-    draw = ImageDraw.Draw(image)
-    
-    img_w, img_h = image.size
-    offset = int(min(img_w, img_h) * 1/100)
-
-    for kp in keypoints:
-        if kp.kind in args.labels.keys():
-            color = args._label_color_map[kp.kind]
-        elif kp.kind in args.parts.keys():
-            color = args._part_color_map[kp.kind]
-        else: raise ValueError
-
-        draw.ellipse([kp.x - offset, kp.y - offset, kp.x + offset, kp.y + offset],
-            fill=color, 
-            outline=color)
 
     return image

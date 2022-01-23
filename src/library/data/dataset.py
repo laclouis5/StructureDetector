@@ -7,9 +7,8 @@ from .transforms import Compose
 
 class Dataset(data.Dataset):
 
-    def __init__(self, args, directories, transforms=None):
+    def __init__(self, directories, transforms=None):
         super().__init__()
-        self.args = args
 
         if isinstance(transforms, list):
             self.transform = Compose(transforms)

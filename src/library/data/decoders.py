@@ -7,25 +7,29 @@ class Decoder:
     def __init__(self, args):
         self.args = args
         self.label_map = args._r_labels
-        self.down_ratio = args.down_ratio
+        self.down_ratio = args.down_ratio  # R
         self.max_objects = args.max_objects  # K
 
-    # output: (B, M+4, H/R, W/R), see network.py
+    # output: (B, M+4, H/R, W/R)
     def __call__(self, 
         outputs: dict[str, torch.Tensor], conf_thresh: float = None, dist_thresh: float = None
     ) -> list[Graph]:
         conf_thresh: float = conf_thresh if conf_thresh is not None else self.args.conf_threshold
         dist_thresh: float = dist_thresh if dist_thresh is not None else self.args.decoder_dist_thresh
 
-        out_h, out_w = outputs["heatmaps"].shape[2:]  # H/R, W/R
+        heatmaps = outputs["heatmaps"]  # (B, M, H/R, W/R)
+        offsets = outputs["offsets"]  # (B, 2, H/R, W/R)
+        embeddings = outputs["embeddings"]  # (B, 2, H/R, W/R)
+
+        out_h, out_w = heatmaps.shape[2:]  # H/R, W/R
         in_h, in_w = int(self.down_ratio * out_h), int(self.down_ratio * out_w)  # H, W
 
         # Keypoints
-        anchor_hm_sig = clamped_sigmoid(outputs["heatmaps"])  # (B, M, H/R, W/R)
+        anchor_hm_sig = clamped_sigmoid(heatmaps)  # (B, M, H/R, W/R)
         anchor_hm = nms(anchor_hm_sig)  # (B, M, H/R, W/R)
         anchor_scores, anchor_inds, anchor_labels, anchor_ys, anchor_xs = topk(
             anchor_hm, k=self.max_objects)  # (B, K)
-        anchor_offsets = transpose_and_gather(outputs["offsets"], anchor_inds)  # (B, K, 2)
+        anchor_offsets = transpose_and_gather(offsets, anchor_inds)  # (B, K, 2)
         anchor_xs += anchor_offsets[..., 0]  # (B, K)
         anchor_ys += anchor_offsets[..., 1]  # (B, K)
 
@@ -36,7 +40,7 @@ class Decoder:
 
         # Embeddings
         # TODO: Check if valid! (anchor_inds, ...)
-        embeddings = transpose_and_gather(outputs["embeddings"], anchor_inds)  # (B, K, 2)
+        embeddings = transpose_and_gather(embeddings, anchor_inds)  # (B, K, 2)
         origin_xs = anchor_xs + embeddings[..., 0]  # (B, K)
         origin_ys = anchor_ys + embeddings[..., 1]  # (B, K)
 

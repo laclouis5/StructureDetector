@@ -119,16 +119,16 @@ class Encode:
         self.max_objects = args.max_objects
         self.sigma_gauss = args.sigma_gauss
 
-    def __call__(self, input: PILImage, target: TreeAnnotation) -> dict:
+    def __call__(self, input: torch.Tensor, target: TreeAnnotation) -> dict:
         img_h, img_w = input.shape[-2:]
         out_w, out_h = int(img_w / self.down_ratio), int(img_h / self.down_ratio)
 
         sigma = self.sigma_gauss * min(out_w, out_h) / 3
         Y, X = torch.meshgrid(torch.arange(out_h), torch.arange(out_w))
 
-        heatmaps = torch.zeros(len(self.labels) + len(self.parts), out_h, out_w)
+        heatmaps = torch.zeros(len(self.labels), out_h, out_w)
         offsets = torch.zeros(self.max_objects, 2)
-        embeddings = torch.zeros(self.max_parts, 2)
+        embeddings = torch.zeros(self.max_objects, 2)
         inds = torch.zeros(self.max_objects, dtype=torch.long)
         off_mask = torch.zeros(self.max_objects, dtype=torch.bool)
         emb_mask = torch.zeros(self.max_objects, dtype=torch.bool)

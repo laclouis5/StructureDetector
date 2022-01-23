@@ -2,7 +2,7 @@ import argparse
 import json
 from pathlib import Path
 import torch
-from .utils import get_unique_color_map, set_seed
+from .utils import set_seed
 
 
 class Arguments:
@@ -10,9 +10,9 @@ class Arguments:
     def __init__(self):
         parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
-        parser.add_argument("--train_dir", type=str, help="The training directory.")
-        parser.add_argument("--valid_dir", type=str, help="The validation directory.")
-        parser.add_argument("--labels", "-m", type=str, default="labels.json")
+        parser.add_argument("--train_dir", type=Path, help="The training directory.")
+        parser.add_argument("--valid_dir", type=Path, help="The validation directory.")
+        parser.add_argument("--labels", "-m", type=Path, default="labels.json")
 
         # Training parameters
         parser.add_argument("--width", "-W", default=512, type=int,
@@ -29,7 +29,7 @@ class Arguments:
             help="The learning rate for training.")
         parser.add_argument("--lr_step", type=int, default=3, 
             help="Number of divisions by 10 of the learning rate during training (happends every int(epochs / lr_step)). 0 = deactivated.")
-        parser.add_argument("--load_model", "-o", default=None, dest="pretrained_model",
+        parser.add_argument("--load_model", "-o", type=Path, default=None, dest="pretrained_model",
             help="Load a previously trained model for evaluation of inference.")
 
         # Encoder
@@ -43,7 +43,7 @@ class Arguments:
             help="Confidence threshold for keypoint detection. Must be in [0, 1].")
         parser.add_argument("--decoder_dist_thresh", type=float, default=10/100,
             help="Radius in percent of min image length considered for keypoint linkage. Must be in [0, 1].")
-        parser.add_argument("--max_objects", "-n", type=int, default=100,
+        parser.add_argument("--max_objects", "-n", type=int, default=300,
             help="The maximum number of objects that can be detected in an image. Can affect performance and memory consumption.")
         
         # Loss function
@@ -91,12 +91,18 @@ class Arguments:
         assert 0 <= args.decoder_dist_thresh <= 1, "'decoder_dist_threshold' should be in [0.0, 1.0]"
         assert 0 < args.sigma_gauss <= 1, "'sigma_gauss' should be in ]0.0, 1.0]"
 
-        args.valid_dir = Path(args.valid_dir).expanduser().resolve()
-        # args.train_dir = Path(args.train_dir).expanduser().resolve()
+        if args.valid_dir is not None:
+            args.valid_dir = Path(args.valid_dir).expanduser().resolve()
+        if args.train_dir is not None:
+            args.train_dir = Path(args.train_dir).expanduser().resolve()
+        if args.pretrained_model is not None:
+            args.pretrained_model = Path(args.pretrained_model).expanduser().resolve()
+        if args.labels is not None:
+            args.labels = Path(args.labels).expanduser().resolve()
 
         args.lr_step = int(args.epochs / args.lr_step) if args.lr_step != 0 else args.epochs
 
-        name_list = json.loads(Path(args.labels).expanduser().resolve().read_text())
+        name_list = json.loads(args.labels.read_text())
         args.labels = {v: i for i, v in enumerate(name_list["labels"])}
 
         args.use_cuda = torch.cuda.is_available()
@@ -106,7 +112,7 @@ class Arguments:
         if torch.backends.cudnn.is_available():
             torch.backends.cudnn.benchmark = True
 
-        set_seed(926354916)
+        # set_seed(926354916)
 
         if args.hm_loss_fn.lower() not in {"focal", "mse"}:
             raise IOError(f"'hm_loss_fn' should either be 'focal' or 'mse', not {args.hm_loss_fn}.")

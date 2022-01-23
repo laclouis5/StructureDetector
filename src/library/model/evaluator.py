@@ -185,49 +185,28 @@ class Evaluator:
     def __init__(self, args):
         self.args = args
         self.labels = args.labels.keys()
-        self.kp_labels = self.args.parts.keys()
-
         self.reset()
 
     def reset(self):
-        self.anchor_eval = Evaluations(self.labels)
-        self.part_eval = Evaluations(self.kp_labels)
-        self.csi_eval = Evaluations(self.labels)
-        self.classification_eval = Evaluations(Evaluator.get_classification_labels())
+        self.keypoint_evaluation = Evaluations(self.labels)
 
-    @property
-    def kps_eval(self):
-        return self.anchor_eval | self.part_eval
+    def accumulate(self, prediction: Graph, annotation: Graph):
+        """Assumes 'prediction' and 'annotation' are in the original input image resolution."""
+        self.evaluate_keypoints(prediction, annotation)
 
-    def accumulate(self, prediction, annotation, part_heatmap=None, eval_csi=False, eval_classif=False):
-        self.anchor_eval += self.eval_anchor(prediction, annotation)
-        
-        # self.part_eval += self.eval_part_2(prediction, annotation)
-        if part_heatmap is not None:
-            self.part_eval += self.eval_part(annotation, part_heatmap)
-        if eval_csi:
-            self.csi_eval += self.eval_csi(prediction, annotation)
-        if eval_classif:
-            self.classification_eval += self.eval_classif(prediction, annotation)
-
-    def eval_anchor(self, prediction, annotation):
-        img_size = annotation.img_size
-
-        annotation = annotation.resized(
-            (self.args.width, self.args.height),
-            img_size)
-        prediction = prediction.resized(
-            (self.args.width, self.args.height),
-            img_size)
+    def evaluate_keypoints(self, prediction: GraphAnnotation, annotation: GraphAnnotation):
+        img_size = annotation.image_size
+        pred_graph = prediction.graph
+        gt_graph = annotation.graph
 
         dist_thresh = min(img_size) * self.args.dist_threshold
-        preds = dict_grouping(prediction.objects, key=lambda obj: obj.name)
-        gts = dict_grouping(annotation.objects, key=lambda obj: obj.name)
+        preds = dict_grouping(pred_graph.keypoints, key=lambda kp: kp.kind)
+        gts = dict_grouping(gt_graph.keypoints, key=lambda kp: kp.kind)
 
-        result = Evaluations(self.labels)
+        kp_eval = self.keypoint_evaluation
 
         for label in self.labels:
-            res = result[label]
+            res = kp_eval[label]
             preds_label = preds.get(label, [])
             gts_label = gts.get(label, [])
 
@@ -235,7 +214,7 @@ class Evaluator:
             res.npos = len(gts_label)
 
             preds_label = sorted(preds_label, 
-                key=lambda obj: obj.anchor.score, reverse=True)
+                key=lambda kp: kp.score, reverse=True)
             visited = np.repeat(False, len(gts_label))
 
             for pred in preds_label:
@@ -252,346 +231,16 @@ class Evaluator:
                     visited[j_min] = True
                     res.tp += 1
                     res.acc.append(min_dist / min(img_size))
-
-        return result
-
-    def eval_part(self, annotation, part_heatmap):
-        img_size = annotation.img_size
-
-        annotation = annotation.resized(
-            (self.args.width, self.args.height),
-            img_size)
-
-        part_heatmap = (kp.resized((self.args.width, self.args.height), img_size) 
-            for kp in part_heatmap)
-
-        dist_thresh = min(img_size) * self.args.dist_threshold
-
-        preds = dict_grouping(part_heatmap, key=lambda kp: kp.kind)
-        gts = (kp for obj in annotation.objects for kp in obj.parts)
-        gts = dict_grouping(gts, key=lambda kp: kp.kind)
-
-        kp_result = Evaluations(self.kp_labels)
-
-        for kp_label in self.kp_labels:
-            res_kp = kp_result[kp_label]
-
-            preds_kp_label = preds.get(kp_label, [])
-            gts_kp_label = gts.get(kp_label, [])
-
-            res_kp.ndet = len(preds_kp_label)
-            res_kp.npos = len(gts_kp_label)
-
-            preds_kp_label = sorted(preds_kp_label,
-                key=lambda kp: kp.score,
-                reverse=True)
-            visited_kp = np.repeat(False, len(gts_kp_label))
-
-            for pred_kp in preds_kp_label:
-                min_dist_kp = sys.float_info.max
-                j_min_kp = None
-
-                for l, gt_kp in enumerate(gts_kp_label):
-                    dist_kp = pred_kp.distance(gt_kp)
-
-                    if dist_kp < min_dist_kp:
-                        min_dist_kp = dist_kp
-                        j_min_kp = l
-
-                if min_dist_kp < dist_thresh and not visited_kp[j_min_kp]:
-                    visited_kp[j_min_kp] = True
-                    res_kp.tp += 1
-                    res_kp.acc.append(min_dist_kp / min(img_size))
-
-        return kp_result
-
-    def eval_part_2(self, prediction, annotation):
-        """Only keeps leaves that have been associated."""
-        img_size = annotation.img_size
-
-        annotation = annotation.resized(
-            (self.args.width, self.args.height),
-            img_size)
-        prediction = prediction.resized(
-            (self.args.width, self.args.height),
-            img_size)
-
-        dist_thresh = min(img_size) * self.args.dist_threshold
-        
-        preds = [part for obj in prediction.objects for part in obj.parts]
-        preds = dict_grouping(preds, key= lambda part: part.kind)
-        gts = [part for obj in annotation.objects for part in obj.parts]
-        gts = dict_grouping(gts, key=lambda part: part.kind)
-
-        result = Evaluations(self.kp_labels)
-
-        for label in self.kp_labels:
-            res = result[label]
-            preds_label = preds.get(label, [])
-            gts_label = gts.get(label, [])
-
-            res.ndet = len(preds_label)
-            res.npos = len(gts_label)
-
-            preds_label = sorted(preds_label, 
-                key=lambda p: p.score, reverse=True)
-            visited = np.repeat(False, len(gts_label))
-
-            for pred in preds_label:
-                min_dist = sys.float_info.max
-                j_min = None
-
-                for j, gt in enumerate(gts_label):
-                    dist = pred.distance(gt)
-                    if dist < min_dist:
-                        min_dist = dist
-                        j_min = j
-
-                if min_dist < dist_thresh and not visited[j_min]:
-                    visited[j_min] = True
-                    res.tp += 1
-                    res.acc.append(min_dist / min(img_size))
-
-        return result
-
-    def eval_csi(self, prediction, annotation):
-        img_size = annotation.img_size
-        annotation = annotation.resized(
-            (self.args.width, self.args.height),
-            img_size)
-        prediction = prediction.resized(
-            (self.args.width, self.args.height),
-            img_size)
-
-        dist_thresh = min(img_size) * self.args.dist_threshold
-
-        preds = dict_grouping(prediction.objects, key=lambda obj: obj.name)
-        gts = dict_grouping(annotation.objects, key=lambda obj: obj.name)
-
-        result = Evaluations(self.labels)
-
-        for label in self.labels:
-            res = result[label]
-            preds_label = preds.get(label, [])
-            gts_label = gts.get(label, [])
-
-            res.ndet = len(preds_label)
-            res.npos = len(gts_label)
-
-            preds_label = sorted(preds_label,
-                key=lambda obj: obj.anchor.score, reverse=True)
-            visited = np.repeat(False, len(gts_label))
-
-            for pred in preds_label:
-                best_csi = 0.0
-                idx_best = None
-
-                for j, gt in enumerate(gts_label):
-                    csi = Evaluator.compute_csi(pred, gt, dist_thresh)
-                    if csi > best_csi:
-                        best_csi = csi
-                        idx_best = j
-
-                if best_csi >= self.args.csi_threshold and not visited[idx_best]:
-                    visited[idx_best] = True
-                    res.tp += 1
-                    res.acc.append(best_csi)
-
-        return result
-
-    @staticmethod
-    def get_classification_labels():
-        """WARNING: Hardcoded"""
-        return [f"bean_{index}" for index in range(10)] + [f"maize_{index}" for index in range(10)]
-
-    def eval_classif(self, prediction, annotation):
-        img_size = annotation.img_size
-        annotation = annotation.resized(
-            (self.args.width, self.args.height),
-            img_size)
-        prediction = prediction.resized(
-            (self.args.width, self.args.height),
-            img_size)
-
-        img_w, img_h = img_size
-        dist_thresh = min(img_w, img_h) * self.args.dist_threshold
-
-        preds = dict_grouping(prediction.objects, 
-            key=lambda obj: f"{obj.name}_{obj.nb_parts}")
-        gts = dict_grouping(annotation.objects, 
-            key=lambda obj: f"{obj.name}_{obj.nb_parts}")
-        labels = Evaluator.get_classification_labels()
-        result = Evaluations(labels)
-
-        for label in labels:
-            res = result[label]
-            preds_label = preds.get(label, [])
-            gts_label = gts.get(label, [])
-
-            res.ndet = len(preds_label)
-            res.npos = len(gts_label)
-
-            preds_label = sorted(preds_label, key=lambda obj: obj.anchor.score, reverse=True)
-            visited = np.repeat(False, len(gts_label))
-
-            for pred in preds_label:
-                best_dist = sys.float_info.max
-                idx_best = None
-
-                for i, gt in enumerate(gts_label):
-                    dist = pred.distance(gt)
-                    if dist < best_dist:
-                        best_dist = dist
-                        idx_best = i
-
-                if best_dist <= dist_thresh and not visited[idx_best]:
-                    visited[idx_best] = True
-                    res.tp += 1
-                    res.acc.append(best_dist / min(img_w, img_h))
-
-        return result
-
-    def eval_classif_2(self, prediction, annotation):
-        img_size = annotation.img_size
-        annotation = annotation.resized(
-            (self.args.width, self.args.height),
-            img_size)
-        prediction = prediction.resized(
-            (self.args.width, self.args.height),
-            img_size)
-
-        dist_thresh = min(img_size) * self.args.dist_threshold
-
-        preds = dict_grouping(prediction.objects, key=lambda obj: f"{obj.name}_{obj.nb_parts}")
-        _gts = dict_grouping(annotation.objects, key=lambda obj: f"{obj.name}_{obj.nb_parts}")
-        gts = annotation.objects
-        visited = [False] * len(gts)
-        labels = Evaluator.get_classification_labels()
-        result = Evaluations(labels)
-
-        for label in labels:
-            res = result[label]
-            preds_label = preds.get(label, [])
-            gts_label = _gts.get(label, [])
-
-            res.ndet = len(preds_label)
-            res.npos = len(gts_label)
-
-            preds_label = sorted(preds_label, key=lambda obj: obj.anchor.score, reverse=True)
-
-            for pred in preds_label:
-                best_dist = sys.float_info.max
-                idx_best = None
-
-                for i, gt in enumerate(gts):
-                    dist = pred.distance(gt)
-                    if dist < best_dist:
-                        best_dist = dist
-                        idx_best = i
-
-                if best_dist > dist_thresh or \
-                    visited[idx_best] or \
-                    (pred.name not in gts[idx_best].name):
-                    continue
-                    
-                # Same label from here
-                label = pred.name
-                if pred.nb_parts != gts[idx_best].nb_parts:
-                    res.count_errors.append((label, pred.nb_parts, gts[idx_best].nb_parts))
-                    continue
-
-                visited[idx_best] = True
-                res.tp += 1
-                res.acc.append(best_dist / min(img_size))
-                res.count_errors.append((label, pred.nb_parts, gts[idx_best].nb_parts))
-
-        return result
-
-    @staticmethod
-    def compute_csi(prediction, target, dist_thresh): 
-        preds_kp = dict_grouping(prediction.parts, key=lambda kp: kp.kind)
-        gts_kp = dict_grouping(target.parts, key=lambda kp: kp.kind)
-
-        if prediction.name != target.name: return 0.0
-
-        evaluation = Evaluation()
-        evaluation.npos += 1
-        evaluation.ndet += 1
-
-        evaluation.tp += prediction.distance(target) < dist_thresh and prediction.name == target.name
-
-        for kp_label in gts_kp.keys() | preds_kp.keys():
-            preds_kp_label = preds_kp.get(kp_label, [])
-            gts_kp_label = gts_kp.get(kp_label, [])
-
-            evaluation.npos += len(gts_kp_label)
-            evaluation.ndet += len(preds_kp_label)
-
-            preds_kp_label = sorted(preds_kp_label,
-                key=lambda kp: kp.score,
-                reverse=True)
-            visited_kp = np.repeat(False, len(gts_kp_label))
-
-            for pred_kp in preds_kp_label:
-                min_dist_kp = sys.float_info.max
-                j_min_kp = None
-
-                for j, gt_kp in enumerate(gts_kp_label):
-                    dist_kp = pred_kp.distance(gt_kp)
-
-                    if dist_kp < min_dist_kp:
-                        min_dist_kp = dist_kp
-                        j_min_kp = j
-
-                if min_dist_kp < dist_thresh and not visited_kp[j_min_kp]:
-                    visited_kp[j_min_kp] = True
-                    evaluation.tp += 1
-
-        return evaluation.csi
 
     def pretty_print(self):
-        results = {
-            "Anchor Location": self.anchor_eval, "Part Location": self.part_eval, 
-            "All Kps Location": self.kps_eval, "CSI": self.csi_eval, 
-            "Classification": self.classification_eval}
+        table = Table(Column("Label", style="bold"), *Evaluation.columns(), title="Keypoints Location")
+        kp_eval = self.keypoint_evaluation
 
-        for title, evals in results.items():
-            table = Table(Column("Label", style="bold"), *Evaluation.columns(), title=title)
+        for label, evaluation in kp_eval.items():
+            table.add_row(label, *evaluation.stats())
 
-            for label, evaluation in evals.items():
-                table.add_row(label, *evaluation.stats())
-
-            if len(evals) > 1:
-                total_eval = evals.reduce()
-                table.add_row("Total", *total_eval.stats(), style="bold")
-            
-            rprint(table)
-
-    def _csv_kps_str(self) -> str:
-        content = []
-        evals = self.kps_eval
-        labels = sorted(evals.labels)
-        for label in labels:
-            eval = evals[label]
-            content.append(",".join((label, str(eval.recall), str(eval.precision), str(eval.f1_score), str(eval.avg_acc))))
-        return "\n".join(content)
-
-    def save_kps_csv(self, path: Path):
-        path.write_text(self._csv_kps_str())
-
-    def __repr__(self):
-        results = {
-            "Anchor Location": self.anchor_eval, "Part Location": self.part_eval,
-            "All Kps Location": self.kps_eval, "CSI": self.csi_eval, 
-            "Classification": self.classification_eval}
-
-        description = ""
-        for (metric_name, evaluations) in results.items():
-            description += f"{metric_name}\n"
-            if len(evaluations) > 1:
-                description += f"  total: {evaluations.reduce()}\n"
-            evaluations = sorted(evaluations.items(), key=lambda tuple: tuple[0])
-            for (label, evaluation) in evaluations:
-                description += f"  {label}: {evaluation}\n"
-
-        return description
+        if len(kp_eval) > 1:
+            total_eval = kp_eval.reduce()
+            table.add_row("Total", *total_eval.stats(), style="bold")
+        
+        rprint(table)
