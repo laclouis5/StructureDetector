@@ -1,5 +1,5 @@
 # Graph Structure Detection Network
-Graph Structure Detector (GSDNet) is designed to detect the graph structure of objects, such as trees. this proof of concept is WIP and not published.
+Graph Structure Detector (GSDNet) is designed to detect the graph structure of objects, such as trees. this proof of concept is WIP and not published research.
 
 ## TODO
 - [x] Basic Graph data structures and helpers
@@ -33,7 +33,7 @@ source env/bin/activate
 Install required Python packages:
 ```zsh
 pip install -U pip
-pip install -r requirements.txt
+pip install -r lock.txt
 ```
 
 ## Reproduce Our Results
