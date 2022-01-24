@@ -30,15 +30,14 @@ class Decoder:
         offsets = transpose_and_gather(offsets, inds)  # (B, K, 2)
         pos_kps = pos + offsets  # (B, K, 2)
 
-        raw_keypoints = torch.stack((*pos_kps, scores, labels.float()), dim=2)  # (B, K, 4)
+        raw_keypoints = torch.stack((*torch.unbind(pos_kps, dim=2), scores, labels.float()), dim=2)  # (B, K, 4)
 
         # Embeddings
         embeddings = transpose_and_gather(embeddings, inds)  # (B, K, 2)
         pos_proj_kps = pos + embeddings  # (B, K, 2)
 
         # Association
-        mask = (scores > conf_thresh).float()  # (B, K)
-        scores = -(1 - mask) + mask * scores  # (B, K) 
+        mask = (scores[..., None] > conf_thresh).float()  # (B, K, 1)
         pos_kps = (1e6*(1 - mask) + mask * pos_kps)  # (B, K, 2)
         pos_proj_kps = (-1e6*(1 - mask) + mask * pos_proj_kps)  # (B, K, 2)
 
