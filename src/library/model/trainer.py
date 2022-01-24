@@ -104,7 +104,7 @@ class Trainer:
                 output = self.net(batch["image"])
 
             annotation = batch["annotation"][0].to_graph()
-            ground_truth = annotation.resized((self.args.width, self.args.height), ground_truth.image_size)
+            ground_truth = annotation.resized((self.args.width, self.args.height), annotation.image_size)
 
             predicted_graph = self.decoder(output)[0]
             prediction = GraphAnnotation(
@@ -158,7 +158,7 @@ class Trainer:
         self.writer.add_image("Graph Prediction/Predicted Graph", graph_im, self.global_step)
 
         # Draw ground truth graph
-        gt_graph_im = draw_graph(image, annotation)
+        gt_graph_im = draw_graph(image, annotation.graph)
         gt_graph_im = F.to_tensor(gt_graph_im)
 
         self.writer.add_image("Graph Prediction/Ground Truth Graph", gt_graph_im, self.global_step)

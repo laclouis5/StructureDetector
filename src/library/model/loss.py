@@ -32,6 +32,17 @@ class Loss(nn.Module):
         return hm_loss + offset_loss + embeddings_loss
 
 
+class WeightedMSELoss(nn.Module):
+    """https://github.com/greatlog/SWAHR-HumanPose/blob/755582699faeafb89e4e00515677e0d581366012/lib/core/loss.py#L29"""
+    
+    def forward(self, input: torch.Tensor, target: torch.Tensor) -> torch.Tensor:
+        # `torch.abs` useless?
+        # Need a mask as in original code?
+        weight = torch.abs(1 - input) * target ** 0.01 + torch.abs(input) * (1 - target)
+        loss = F.mse_loss(input, target, reduction="none") * weight
+        return loss.mean()
+
+
 class L1Loss(nn.Module):
 
     def __init__(self):
@@ -47,9 +58,6 @@ class L1Loss(nn.Module):
 
 class SmoothL1Loss(nn.Module):
 
-    def __init__(self):
-        super().__init__()
-
     # input: (B, 2, H, W), target: (B, K, 2), inds & mask: (B, K)
     def forward(self, input, target, inds, mask):
         preds = transpose_and_gather(input, inds)  # (B, K, 2)
@@ -60,9 +68,6 @@ class SmoothL1Loss(nn.Module):
 
 class L2Loss(nn.Module):
 
-    def __init__(self):
-        super().__init__()
-
     # input: (B, 2, H, W), target: (B, K, 2), inds & mask: (B, K)
     def forward(self, input, target, inds, mask):
         preds = transpose_and_gather(input, inds)  # (B, K, 2)
@@ -72,9 +77,6 @@ class L2Loss(nn.Module):
 
 
 class FocalLoss(nn.Module):
-
-    def __init__(self):
-        super().__init__()
 
     # input: (B, N, H, W), target: (B, N, H, W)
     def forward(self, input, target):

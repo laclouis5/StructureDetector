@@ -13,11 +13,12 @@ Graph Structure Detector (GSDNet) is designed to detect the graph structure of o
 - [x] Trainer
 - [x] Evaluator
 - [x] Validation
-- [ ] Test with FPNTop
-- [ ] Test reducing `sigma_gauss`
+- [x] Test with FPNTop
+- [x] Test reducing `sigma_gauss`
+- [ ] Test `embedding_weight` x2
+- [ ] Test heatmaps loss weight
 - [ ] Test with 612x512 resolution
 - [ ] Test apex mixed-precision training
-- [ ] Test `embedding_weight` x2
 
 ## Installation
 Requirements:
