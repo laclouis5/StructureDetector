@@ -64,7 +64,7 @@ class Network(nn.Module):
         self.up3 = Fpn(128, self.fpn_depth)  # x2 -> /8
         self.up4 = Fpn(64, self.fpn_depth)  # x2 -> /4
 
-        # self.up5 = FPNTop(64, self.fpn_depth)  # x2 -> /2
+        self.up5 = FPNTop(64, self.fpn_depth)  # x2 -> /2
 
         self.head = Head(self.fpn_depth, self.out_channels)
 
@@ -81,10 +81,10 @@ class Network(nn.Module):
         f2 = self.up3(f3, p3)  # (B, 128, H/8, W/8)
         f1 = self.up4(f2, p2)  # (B, 128, H/4, W/4)
 
-        # f0 = self.up5(f1, p1)  # (B, 64, H/2, W/2)
-        # out = self.head(f0)  # (B, M+4, H/2, W/2)
+        f0 = self.up5(f1, p1)  # (B, 64, H/2, W/2)
+        out = self.head(f0)  # (B, M+4, H/2, W/2)
 
-        out = self.head(f1)  # (B, M+4, H/4, W/4)
+        # out = self.head(f1)  # (B, M+4, H/4, W/4)
 
         nb_hm = self.label_count  # M
 
