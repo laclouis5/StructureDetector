@@ -15,6 +15,7 @@ Graph Structure Detector (GSDNet) is designed to detect the graph structure of o
 - [ ] Test reducing `sigma_gauss`
 - [ ] Test with 612x512 resolution
 - [ ] Test apex mixed-precision training
+- [ ] Test `embedding_weight` x2
 
 ## Installation
 Requirements:

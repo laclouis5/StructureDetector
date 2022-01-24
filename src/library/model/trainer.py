@@ -46,7 +46,7 @@ class Trainer:
             pin_memory=args.use_cuda,
             num_workers=args.num_workers, 
             persistent_workers=True,
-            drop_last=True)
+            drop_last=True)  # Remove this?
 
         self.valid_set = Dataset(args.valid_dir, transforms=ValidationAugmentation(args))
         self.valid_dataloader = data.DataLoader(self.valid_set,
@@ -103,8 +103,8 @@ class Trainer:
             with torch.no_grad():
                 output = self.net(batch["image"])
 
-            ground_truth = batch["annotation"][0].to_graph()
-            ground_truth = ground_truth.resized((self.args.width, self.args.height), ground_truth.image_size)
+            annotation = batch["annotation"][0].to_graph()
+            ground_truth = annotation.resized((self.args.width, self.args.height), ground_truth.image_size)
 
             predicted_graph = self.decoder(output)[0]
             prediction = GraphAnnotation(
@@ -145,7 +145,7 @@ class Trainer:
         self.writer.add_scalars("Keypoint Evaluation/Recall", kps_rec, self.global_step)
         self.writer.add_scalars("Keypoint Evaluation/F1", kps_f1, self.global_step)
 
-        # Draw ground truth annotation
+        # Draw predicted graph
         image = batch["image"][0]  # Last image
         image = un_normalize(image)
         image = F.to_pil_image(image)
@@ -155,10 +155,21 @@ class Trainer:
         graph_im = draw_graph(image, graph)
         graph_im = F.to_tensor(graph_im)
 
-        self.writer.add_image("Predicted Graph", graph_im, self.global_step)
+        self.writer.add_image("Graph Prediction/Predicted Graph", graph_im, self.global_step)
+
+        # Draw ground truth graph
+        gt_graph_im = draw_graph(image, annotation)
+        gt_graph_im = F.to_tensor(gt_graph_im)
+
+        self.writer.add_image("Graph Prediction/Ground Truth Graph", gt_graph_im, self.global_step)
 
         # Heatmaps
         heatmaps = output["heatmaps"][0]
         heatmaps_im = draw_heatmaps(heatmaps, self.args)
         heatmaps_im = F.to_tensor(heatmaps_im)
-        self.writer.add_image("Predicted Heatmaps", heatmaps_im, self.global_step)
+        self.writer.add_image("Heatmaps/Predicted Heatmaps", heatmaps_im, self.global_step)
+
+        heatmaps = batch["heatmaps"][0]
+        heatmaps_im = draw_heatmaps(heatmaps, self.args)
+        heatmaps_im = F.to_tensor(heatmaps_im)
+        self.writer.add_image("Heatmaps/Ground Truth Heatmaps", heatmaps_im, self.global_step)
