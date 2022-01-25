@@ -1,3 +1,4 @@
+from __future__ import annotations
 from ..utils import *
 import torch
 import torch.utils.data as data
@@ -26,17 +27,25 @@ class Dataset(data.Dataset):
 
         self.files = sorted(self.files)
 
+        # TODO: Test
+        self._files = []
+        for file in self.files:
+            an = TreeAnnotation.from_json_ann(file)
+            im = Image.open(an.image_path)
+            im = ImageOps.exif_transpose(im)
+            self._files.append((im, an))
+
     def __len__(self):
         return len(self.files)
 
     def __getitem__(self, index: int):
-        annotation = TreeAnnotation.from_json_ann(self.files[index])
-        image = Image.open(annotation.image_path)
-        image = ImageOps.exif_transpose(image)
+        image, annotation = self._files[index]  # TODO: Test
+        # annotation = TreeAnnotation.from_json_ann(self.files[index])
+        # image = Image.open(annotation.image_path)
+        # image = ImageOps.exif_transpose(image)
 
         if self.transform is not None:
             return self.transform(image, annotation)
-
         return image, annotation
 
     def localize_image_names(self):
