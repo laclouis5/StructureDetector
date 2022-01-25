@@ -37,7 +37,7 @@ class Trainer:
 
         # TODO: Add Apex mixed precision computing for faster training and inference
 
-        self.optimizer = torch.optim.Adam(self.net.parameters(), args.learning_rate)
+        self.optimizer = torch.optim.AdamW(self.net.parameters(), args.learning_rate)
         self.scheduler = torch.optim.lr_scheduler.StepLR(self.optimizer, step_size=args.lr_step)
 
         self.train_set = Dataset(args.train_dir, transforms=TrainAugmentation(args))
@@ -46,7 +46,7 @@ class Trainer:
             pin_memory=args.use_cuda,
             num_workers=args.num_workers, 
             persistent_workers=True,
-            drop_last=True)  # Remove this?
+            drop_last=True)  # <- Remove this?
 
         self.valid_set = Dataset(args.valid_dir, transforms=ValidationAugmentation(args))
         self.valid_dataloader = data.DataLoader(self.valid_set,
