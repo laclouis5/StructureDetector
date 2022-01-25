@@ -501,7 +501,7 @@ def gaussian_2d(X: np.ndarray, Y: np.ndarray, mu1: float, mu2: float, sigma: flo
 
 # heatmaps: (B, C, H, W)
 def nms(heatmaps: torch.Tensor) -> torch.Tensor:
-    max_values = nn.functional.max_pool2d(heatmaps, kernel_size=5, stride=1, padding=2)
+    max_values = nn.functional.max_pool2d(heatmaps, kernel_size=3, stride=1, padding=1)
     return (heatmaps == max_values) * heatmaps  # (B, C, H, W)
 
 
