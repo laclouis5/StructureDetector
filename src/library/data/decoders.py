@@ -9,6 +9,7 @@ class Decoder:
         self.label_map = args._r_labels
         self.down_ratio = args.down_ratio  # R
         self.max_objects = args.max_objects  # K
+        self.nms_window_size = args.nms_window_size
 
     # output: (B, M+4, H/R, W/R)
     def __call__(self, 
@@ -25,7 +26,7 @@ class Decoder:
         in_h, in_w = int(self.down_ratio * out_h), int(self.down_ratio * out_w)  # H, W
 
         # Keypoints
-        heatmaps = nms(heatmaps)  # (B, M, H/R, W/R)
+        heatmaps = nms(heatmaps, window_size=self.nms_window_size)  # (B, M, H/R, W/R)
         scores, inds, labels, pos = topk(heatmaps, k=self.max_objects)
         offsets = transpose_and_gather(offsets, inds)  # (B, K, 2)
         pos_kps = pos + offsets  # (B, K, 2)
@@ -59,6 +60,7 @@ class Decoder:
 
             for kp_index, kp_data in enumerate(batch_keypoints):
                 score = float(kp_data[2])
+                # TODO: 'topk' should have sorted the keypoints by decreasing confidence so it may be possible to break the loop early instead of iterating the K potential keypoints. The same applies for the next for-loop.
                 if score >= conf_thresh:
                     label = self.label_map[int(kp_data[3])]
                     x, y = float(kp_data[0]), float(kp_data[1])

@@ -485,7 +485,6 @@ def transpose_and_gather(feat: torch.Tensor, ind: torch.Tensor) -> torch.Tensor:
     return feat.permute(0, 2, 1)  # (B, N, C)
 
 
-# input: Tensor
 def clamped_sigmoid(input: torch.Tensor) -> torch.Tensor:
     output = torch.sigmoid(input)
     return clamp_in_0_1(output)
@@ -495,13 +494,17 @@ def clamp_in_0_1(tensor: torch.Tensor) -> torch.Tensor:
     return torch.clamp(tensor, min=1e-6, max=1-1e-6)
 
 
-def gaussian_2d(X: np.ndarray, Y: np.ndarray, mu1: float, mu2: float, sigma: float) -> np.ndarray:
+def gaussian_2d(X: torch.Tensor, Y: torch.Tensor, mu1: float, mu2: float, sigma: float) -> torch.Tensor:
     return torch.exp((-(X - mu1)**2 - (Y - mu2)**2) / (2 * sigma**2))
 
 
 # heatmaps: (B, C, H, W)
-def nms(heatmaps: torch.Tensor) -> torch.Tensor:
-    max_values = nn.functional.max_pool2d(heatmaps, kernel_size=3, stride=1, padding=1)
+def nms(heatmaps: torch.Tensor, window_size: int = 3) -> torch.Tensor:
+    padding = window_size // 2
+    max_values = nn.functional.max_pool2d(heatmaps, 
+        kernel_size=window_size, 
+        stride=1, 
+        padding=padding)
     return (heatmaps == max_values) * heatmaps  # (B, C, H, W)
 
 
@@ -546,6 +549,6 @@ def unique_color(string: str, seed: str = "") -> Color:
     return (*hashlib.md5((string + seed).encode()).digest()[:3],)
 
 
-def get_unique_color_map(labels: Sequence[str]) -> dict[str, Color]:
+def unique_color_map(labels: Sequence[str]) -> dict[str, Color]:
     """(╯°□°)╯︵ ┻━hash()━┻"""
     return {n: unique_color(n) for n in labels}
