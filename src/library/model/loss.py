@@ -38,7 +38,7 @@ class WeightedMSELoss(nn.Module):
     def forward(self, input: torch.Tensor, target: torch.Tensor) -> torch.Tensor:
         # `torch.abs` useless?
         # Need a mask as in original code?
-        weight = torch.abs(1 - input) * target ** 0.01 + torch.abs(input) * (1 - target)
+        weight = (1 - input) * target ** 0.01 + input * (1 - target)
         loss = F.mse_loss(input, target, reduction="none") * weight
         return loss.mean()
 

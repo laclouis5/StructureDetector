@@ -1,5 +1,5 @@
 # Graph Structure Detection Network
-Graph Structure Detector (GSDNet) is designed to detect the graph structure of objects, such as trees. this proof of concept is WIP and not published research.
+Graph Structure Detector (GSDNet) is designed to detect the graph structure of objects, such as trees. This proof of concept is WIP and not published research.
 
 ![illustration](illustration.png)
 
@@ -16,7 +16,7 @@ Graph Structure Detector (GSDNet) is designed to detect the graph structure of o
 - [x] Test with FPNTop
 - [x] Test reducing `sigma_gauss`
 - [ ] Test `embedding_weight` x2
-- [ ] Test heatmaps loss weight
+- [x] Test heatmaps loss weight
 - [ ] Test with 612x512 resolution
 - [ ] Test apex mixed-precision training
 

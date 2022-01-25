@@ -51,9 +51,9 @@ class Arguments:
             help="Loss for heatmaps regression. Options: 'focal' and 'mse'.")
         parser.add_argument("--hm_weight", type=float, default=1.0,
             help="Weight for the heatmap loss.")
-        parser.add_argument("--offset_weight", type=float, default=0.001,
+        parser.add_argument("--offset_weight", type=float, default=0.002,
             help="Weight for the offset loss.")
-        parser.add_argument("--embedding_weight", type=float, default=0.001,
+        parser.add_argument("--embedding_weight", type=float, default=0.002,
             help="Weight for the embedding loss.")
 
         # Other nerwork parameters
