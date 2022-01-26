@@ -97,7 +97,7 @@ class Network(nn.Module):
         torch.save(self.state_dict(), path)
 
 
-class Network2(nn.Module):
+class NetworkRegNet(nn.Module):
     
     def __init__(self, args, pretrained=True):
         super().__init__()

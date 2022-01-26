@@ -1,5 +1,5 @@
 from .loss import Loss, LossStats
-from .network import Network, Network2
+from .network import Network
 from .evaluator import Evaluator
 from ..data import *
 
@@ -16,7 +16,7 @@ class Trainer:
 
     def __init__(self, args):
         self.args = args
-        self.net = Network2(args, pretrained=True)
+        self.net = Network(args, pretrained=True)
         self.loss = Loss(args)
         self.decoder = Decoder(args)
         self.evaluator = Evaluator(args)
