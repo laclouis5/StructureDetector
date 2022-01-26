@@ -244,8 +244,8 @@ class ImageAnnotation:
         return copy.deepcopy(self).normalize(size)
 
     @staticmethod
-    def from_json(file, anchor_name):
-        data = json.load(open(file))
+    def from_json(file: Path, anchor_name: str):
+        data = json.loads(file.read_text())
         image_path = Path(data["image_path"])
         img_size = data.get("img_size", None)
         objects = [Object.from_json(obj, anchor_name) for obj in data["objects"]]
@@ -305,7 +305,7 @@ class AverageMeter:
         return self.avg
 
 
-def files_with_extension(folder, extension):
+def files_with_extension(folder: Path, extension: str):
     return [f for f in Path(folder).iterdir() if f.suffix == extension]
 
 

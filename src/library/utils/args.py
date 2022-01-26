@@ -95,7 +95,15 @@ class Arguments:
 
         args.lr_step = int(args.epochs / args.lr_step) if args.lr_step != 0 else args.epochs
 
-        name_list = json.load(open(args.labels))
+        if args.train_dir is not None:
+            args.train_dir = Path(args.train_dir).expanduser().resolve()
+        if args.valid_dir is not None:
+            args.valid_dir = Path(args.valid_dir).expanduser().resolve()
+        if args.pretrained_model is not None:
+            args.pretrained_model = Path(args.pretrained_model).expanduser().resolve()
+
+        labels_file = Path(args.labels).expanduser().resolve()
+        name_list = json.loads(labels_file.read_text())
 
         if isinstance(name_list["labels"], dict):
             args.labels = name_list["labels"]
