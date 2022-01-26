@@ -1,5 +1,5 @@
 from .loss import Loss, LossStats
-from .network import Network
+from .network import Network, NetworkRegNet
 from .evaluator import Evaluator
 from ..data import *
 
@@ -86,7 +86,6 @@ class Trainer:
         self.scheduler.step()
         self.train_set.transform.trigger_random_resize()
         self.writer.add_scalar("Learning Rate", self.optimizer.param_groups[0]["lr"], self.global_step)
-        self.writer.add_scalar("Learning Rate/Scheduler", self.scheduler.get_last_lr()[0], self.global_step)
 
     def valid(self):
         self.net.eval()

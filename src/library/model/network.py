@@ -1,8 +1,6 @@
-from numpy import short
 import torch
 import torch.nn as nn
 import torchvision
-
 from library.utils.utils import clamped_sigmoid
 
 
