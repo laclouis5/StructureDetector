@@ -1,10 +1,9 @@
 from .loss import Loss, LossStats
-from .network import Network
+from .network import Network, Network2
 from .evaluator import Evaluator
 from ..data import *
 
 import torch
-import torch.nn as nn
 import torchvision.transforms.functional as F
 import torch.utils.data as data
 from torch.utils.tensorboard import SummaryWriter
@@ -17,18 +16,22 @@ class Trainer:
 
     def __init__(self, args):
         self.args = args
-        self.net = Network(args, pretrained=True)
+        self.net = Network2(args, pretrained=True)
         self.loss = Loss(args)
         self.decoder = Decoder(args)
         self.evaluator = Evaluator(args)
 
-        # Logging an metrics
-        self.writer = SummaryWriter()
+        # Logging
+        date_str = f"{datetime.now():%Y-%m-%d_%H-%M-%S}"
+        self.save_dir = Path("trainings/") / date_str
+        mkdir_if_needed("trainings/")
+        mkdir_if_needed(self.save_dir)
+
+        self.writer = SummaryWriter(Path("runs/") / date_str)
         self.global_step = 0
         self.best_loss = torch.finfo().max
         self.best_kp_reg = 0.0
 
-        # TODO: Test this.
         if args.pretrained_model:
             self.net.load_state_dict(torch.load(args.pretrained_model, map_location=args.device))
 
@@ -54,11 +57,6 @@ class Trainer:
             pin_memory=args.use_cuda,
             persistent_workers=True,
             num_workers=args.num_workers)
-
-        # Logging
-        self.save_dir = Path("trainings/") / f"{datetime.now():%Y-%m-%d_%H-%M-%S}"
-        mkdir_if_needed("trainings/")
-        mkdir_if_needed(self.save_dir)
 
     def train(self):
         for epoch in tqdm(range(self.args.epochs), desc="Training", unit="epoch"):
@@ -88,6 +86,7 @@ class Trainer:
         self.scheduler.step()
         self.train_set.transform.trigger_random_resize()
         self.writer.add_scalar("Learning Rate", self.optimizer.param_groups[0]["lr"], self.global_step)
+        self.writer.add_scalar("Learning Rate/Scheduler", self.scheduler.get_last_lr()[0], self.global_step)
 
     def valid(self):
         self.net.eval()

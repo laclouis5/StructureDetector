@@ -50,14 +50,14 @@ class Network(nn.Module):
         self.out_channels = self.label_count + 4  # M + 4
         self.fpn_depth = args.fpn_depth
 
-        resnet = torchvision.models.resnet34(pretrained=pretrained)
+        backbone = torchvision.models.resnet34(pretrained=pretrained)
 
-        self.adpater = nn.Sequential(resnet.conv1, resnet.bn1, resnet.relu, resnet.maxpool)  # /4 -> /4
+        self.adapter = nn.Sequential(backbone.conv1, backbone.bn1, backbone.relu, backbone.maxpool)  # /4 -> /4
 
-        self.down1 = resnet.layer1  # /1 -> /4
-        self.down2 = resnet.layer2  # /2 -> /8
-        self.down3 = resnet.layer3  # /2 -> /16
-        self.down4 = resnet.layer4  # /2 -> /32
+        self.down1 = backbone.layer1  # /1 -> /4
+        self.down2 = backbone.layer2  # /2 -> /8
+        self.down3 = backbone.layer3  # /2 -> /16
+        self.down4 = backbone.layer4  # /2 -> /32
 
         self.up1 = nn.Conv2d(512, self.fpn_depth, kernel_size=1)  # x1 -> /32
         self.up2 = Fpn(256, self.fpn_depth)  # x2 -> /16
@@ -69,7 +69,7 @@ class Network(nn.Module):
         self.head = Head(self.fpn_depth, self.out_channels)
 
     def forward(self, x: torch.Tensor) -> dict[torch.Tensor]:  # (B, 3, H, W)
-        p1 = self.adpater(x)  # (B, 64, H/4, W/4)
+        p1 = self.adapter(x)  # (B, 64, H/4, W/4)
 
         p2 = self.down1(p1)  # (B, 64, H/4, W/4)
         p3 = self.down2(p2)  # (B, 128, H/8, W/8)
@@ -83,6 +83,58 @@ class Network(nn.Module):
 
         # f0 = self.up5(f1, p1)  # (B, 64, H/2, W/2)
         # out = self.head(f0)  # (B, M+4, H/2, W/2)
+
+        out = self.head(f1)  # (B, M+4, H/4, W/4)
+
+        nb_hm = self.label_count  # M
+
+        return {  # R = 4
+            "heatmaps": clamped_sigmoid(out[:, :self.label_count]),  # (B, M, H/R, W/R)
+            "offsets": out[:, nb_hm:(nb_hm + 2)],  # (B, 2, H/R, W/R)
+            "embeddings": out[:, (nb_hm + 2):(nb_hm + 4)]}  # (B, 2, H/R, W/R)
+
+    def save(self, path="last_model.pth"):
+        torch.save(self.state_dict(), path)
+
+
+class Network2(nn.Module):
+    
+    def __init__(self, args, pretrained=True):
+        super().__init__()
+
+        self.label_count = len(args.labels)  # M
+        self.out_channels = self.label_count + 4  # M + 4
+        self.fpn_depth = args.fpn_depth
+
+        backbone = torchvision.models.regnet_x_1_6gf(pretrained=pretrained)
+        stages = backbone.trunk_output
+
+        self.adapter = backbone.stem # /4 -> /4
+
+        self.down1 = stages.block1  # /1 -> /4
+        self.down2 = stages.block2  # /2 -> /8
+        self.down3 = stages.block3  # /2 -> /16
+        self.down4 = stages.block4  # /2 -> /32
+
+        self.up1 = nn.Conv2d(912, self.fpn_depth, kernel_size=1)  # x1 -> /32
+        self.up2 = Fpn(408, self.fpn_depth)  # x2 -> /16
+        self.up3 = Fpn(168, self.fpn_depth)  # x2 -> /8
+        self.up4 = Fpn(72, self.fpn_depth)  # x2 -> /4
+
+        self.head = Head(self.fpn_depth, self.out_channels)
+
+    def forward(self, x: torch.Tensor) -> dict[torch.Tensor]:  # (B, 3, H, W)
+        p1 = self.adapter(x)  # (B, 64, H/4, W/4)
+
+        p2 = self.down1(p1)  # (B, 64, H/4, W/4)
+        p3 = self.down2(p2)  # (B, 128, H/8, W/8)
+        p4 = self.down3(p3)  # (B, 256, H/16, W/16)
+        p5 = self.down4(p4)  # (B, 512, H/32, W/32)
+
+        f4 = self.up1(p5)  # (B, 128, H/32, W/32)
+        f3 = self.up2(f4, p4)  # (B, 128, H/16, W/16)
+        f2 = self.up3(f3, p3)  # (B, 128, H/8, W/8)
+        f1 = self.up4(f2, p2)  # (B, 128, H/4, W/4)
 
         out = self.head(f1)  # (B, M+4, H/4, W/4)
 
