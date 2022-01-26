@@ -113,8 +113,8 @@ class Arguments:
 
         args._r_labels = {v: k for k, v in args.labels.items()}
 
-        args.num_workers = 8 if args.use_cuda else 4
         args.use_cuda = torch.cuda.is_available()
+        args.num_workers = 8 if args.use_cuda else 4
         args.device = torch.device("cuda" if args.use_cuda else "cpu")
 
         if torch.backends.cudnn.is_available():

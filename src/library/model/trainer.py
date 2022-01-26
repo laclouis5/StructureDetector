@@ -40,17 +40,17 @@ class Trainer:
         self.optimizer = torch.optim.AdamW(self.net.parameters(), args.learning_rate)
         self.scheduler = torch.optim.lr_scheduler.StepLR(self.optimizer, step_size=args.lr_step)
 
-        self.train_set = Dataset(args.train_dir, transforms=TrainAugmentation(args))
+        self.train_set = TrainDataset(args.train_dir, transforms=TrainAugmentation(args))
         self.train_dataloader = data.DataLoader(self.train_set,
-            batch_size=args.batch_size, collate_fn=Dataset.collate_fn, shuffle=True,
+            batch_size=args.batch_size, shuffle=True,
             pin_memory=args.use_cuda,
             num_workers=args.num_workers, 
             persistent_workers=True,
             drop_last=True)  # <- Remove this?
 
-        self.valid_set = Dataset(args.valid_dir, transforms=ValidationAugmentation(args))
+        self.valid_set = ValidDataset(args.valid_dir, transforms=ValidationAugmentation(args))
         self.valid_dataloader = data.DataLoader(self.valid_set,
-            batch_size=1, collate_fn=Dataset.collate_fn, shuffle=True,
+            batch_size=1, collate_fn=ValidDataset.collate_fn, shuffle=True,
             pin_memory=args.use_cuda,
             persistent_workers=True,
             num_workers=args.num_workers)
@@ -73,9 +73,8 @@ class Trainer:
         self.net.train()
 
         for batch in tqdm(self.train_dataloader, desc="Epoch", leave=False, unit="batch"):
-            for (k, v) in batch.items():
-                if isinstance(v, torch.Tensor):
-                    batch[k] = v.to(self.args.device)
+            for k, v in batch.items():
+                batch[k] = v.to(self.args.device)
 
             self.optimizer.zero_grad()
             output = self.net(batch["image"])

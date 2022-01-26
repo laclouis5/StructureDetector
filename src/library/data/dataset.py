@@ -1,4 +1,5 @@
 from __future__ import annotations
+from base64 import encode
 from ..utils import *
 import torch
 import torch.utils.data as data
@@ -6,7 +7,43 @@ from PIL import Image, ImageOps
 from .transforms import Compose
 
 
-class Dataset(data.Dataset):
+class TrainDataset(data.Dataset):
+
+    def __init__(self, directories, transforms=None):
+        super().__init__()
+
+        if isinstance(transforms, list):
+            self.transform = Compose(transforms)
+        else:
+            self.transform = transforms
+
+        if isinstance(directories, (str, Path)):
+            self.files = files_with_extension(directories, ".json")
+        elif isinstance(directories, list):
+            self.files = [file
+                for directory in directories
+                for file in files_with_extension(directory, ".json")]
+        else:
+            raise ValueError("'directories' should be either a unique directory or a list of directories.")
+
+        self.files = sorted(self.files)
+
+    def __len__(self):
+        return len(self.files)
+
+    def __getitem__(self, index: int):
+        annotation = TreeAnnotation.from_json_ann(self.files[index])
+        image = Image.open(annotation.image_path)
+        image = ImageOps.exif_transpose(image)
+
+        if self.transform is not None:
+            encoded = self.transform(image, annotation)
+            del encoded["annotation"]
+            return encoded
+        return image, annotation
+
+
+class ValidDataset(data.Dataset):
 
     def __init__(self, directories, transforms=None):
         super().__init__()
