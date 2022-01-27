@@ -22,12 +22,12 @@ class Trainer:
         self.evaluator = Evaluator(args)
 
         # Logging
-        date_str = f"{datetime.now():%Y-%m-%d_%H-%M-%S}"
-        self.save_dir = Path("trainings/") / date_str
+        log_dir = args.log_dir or f"{datetime.now():%Y-%m-%d_%H-%M-%S}"
+        self.save_dir = Path("trainings/") / log_dir
         mkdir_if_needed("trainings/")
         mkdir_if_needed(self.save_dir)
 
-        self.writer = SummaryWriter(Path("runs/") / date_str)
+        self.writer = SummaryWriter(Path("runs/") / log_dir)
         self.global_step = 0
         self.best_loss = torch.finfo().max
         self.best_kp_reg = 0.0

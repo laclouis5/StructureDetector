@@ -68,6 +68,10 @@ class Arguments:
         parser.add_argument("--dist_threshold", "-d", type=float, default=5/100,
             help="Radius in percent of min image length considered for evaluation. Must be in [0, 1].")
 
+        # Others
+        parser.add_argument("--log_dir", type=str, default=None, 
+            help="The name of the logging directory. Dafault: date.")
+
         self.parser = parser
 
     def parse(self):
