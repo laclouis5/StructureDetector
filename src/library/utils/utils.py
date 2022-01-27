@@ -530,6 +530,7 @@ def topk(
     topk_ys = gather(topk_ys.view(batch, -1, 1), topk_ind).squeeze(-1)
     topk_xs = gather(topk_xs.view(batch, -1, 1), topk_ind).squeeze(-1)
 
+    # (B, K, 2)
     topk_pos = torch.stack((topk_xs, topk_ys), dim=2)
 
     return topk_score, topk_inds, topk_clses, topk_pos

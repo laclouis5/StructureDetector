@@ -9,7 +9,7 @@ def un_normalize(tensor: torch.Tensor) -> torch.Tensor:  # (B, 3, H, W)
     # (3, 1, 1)
     mean = torch.tensor([0.485, 0.456, 0.406], device=tensor.device)[..., None, None]
     std = torch.tensor([0.229, 0.224, 0.225], device=tensor.device)[..., None, None]
-    return tensor * std + mean
+    return tensor * std + mean  # (B, 3, H, W)
 
 
 def draw_graph(image: PILImage, graph: Graph) -> PILImage:
@@ -44,7 +44,7 @@ def draw_tree(image: PILImage, tree: Tree) -> PILImage:
 
 
 # anchor_hm: (M, H, W)
-def draw_heatmaps(anchor_hm: torch.Tensor, args) -> PILImage:
+def draw_heatmaps(anchor_hm: torch.Tensor) -> PILImage:
     assert anchor_hm.dim() == 3, "Do not send batched data to this function, only one sample"
 
     c, h, w = anchor_hm.shape  # (M, H, W)
