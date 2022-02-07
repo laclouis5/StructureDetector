@@ -17,7 +17,7 @@ class CropDataset(data.Dataset):
         else:
             self.transform = transforms
 
-        if isinstance(directories, str):
+        if isinstance(directories, (str, Path)):
             self.files = files_with_extension(directories, ".json")
         elif isinstance(directories, list):
             self.files = [file
