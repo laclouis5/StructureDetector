@@ -24,8 +24,6 @@ pip install -r requirements.txt
 ```
 
 # Reproduce Our Results
-The dataset is currently private but will eventually be released in a dedicated paper. However, before this publication, one can ask the validation dataset to the contact address in order to reproduce our results.
-
 Put the validation dataset in `database/valid/` at the root directory of the repo, download the network and put it at the root directory, then execute this command:
 
 ```zsh
@@ -33,6 +31,8 @@ python src/evaluate.py --valid_dir database/valid --load_model model_best_classi
 ```
 
 This should reproduce the results of our paper up to some small error margin depending on the hardware.
+
+The dataset is currently in the process of being published. It can be accessed [here](https://data.mendeley.com/datasets/d7kbzjr83k/1).
 
 # Train Your Own Model
 ## Annotation
