@@ -24,7 +24,7 @@ pip install -r requirements.txt
 ```
 
 # Reproduce Our Results
-Put the validation dataset in `database/valid/` at the root directory of the repo, download the network and put it at the root directory, then execute this command:
+Download and put the validation dataset in `database/valid/` at the root directory of the repo, then execute this command:
 
 ```zsh
 python src/evaluate.py --valid_dir database/valid --load_model model_best_classif.pth --anchor_name stem --conf_threshold 0.4 --decoder_dist_thresh 0.1 --dist_threshold 0.05
