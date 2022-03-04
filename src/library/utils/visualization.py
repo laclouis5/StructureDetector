@@ -44,7 +44,7 @@ def draw_tree(image: PILImage, tree: Tree) -> PILImage:
 
 
 # anchor_hm: (M, H, W)
-def draw_heatmaps(anchor_hm: torch.Tensor) -> PILImage:
+def draw_heatmaps(anchor_hm: torch.Tensor, args) -> PILImage:
     assert anchor_hm.dim() == 3, "Do not send batched data to this function, only one sample"
 
     c, h, w = anchor_hm.shape  # (M, H, W)

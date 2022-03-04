@@ -120,6 +120,11 @@ class Tree:
             keypoint.clip(size)
         return self
 
+    def map_labels(self, mapping: dict[str, str]) -> "Tree":
+        for keypoint in self.keypoints:
+            keypoint.kind = mapping[keypoint.kind]
+        return self
+
     def clipped(self, size: Size) -> "Tree":
         return copy.deepcopy(self).clip(size)
 
@@ -251,6 +256,11 @@ class Graph:
     def clipped(self, size: Size) -> "Graph":
         return copy.deepcopy(self).clip(size)
 
+    def map_labels(self, mapping: dict[str, str]) -> "Graph":
+        for keypoint in self.keypoints:
+            keypoint.kind = mapping[keypoint.kind]
+        return self
+
     def json_repr(self) -> dict:
         inds = {kp: i for i, kp in enumerate(self.keypoints)}
 
@@ -326,6 +336,10 @@ class GraphAnnotation:
 
     def clipped(self, size: Size) -> "GraphAnnotation":
         return copy.deepcopy(self).clip(size)
+
+    def map_labels(self, mapping: dict[str, str]) -> "GraphAnnotation":
+        self.graph.map_labels(mapping)
+        return self
 
     def json_repr(self) -> dict:
         image_size = self.image_size
@@ -404,6 +418,10 @@ class TreeAnnotation:
 
     def clipped(self, size: Size) -> "TreeAnnotation":
         return copy.deepcopy(self).clip(size)
+
+    def map_labels(self, mapping: dict[str, str]) -> "TreeAnnotation":
+        self.tree.map_labels(mapping)
+        return self
 
     def to_graph(self) -> "GraphAnnotation":
         return GraphAnnotation(
