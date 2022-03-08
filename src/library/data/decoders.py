@@ -73,7 +73,8 @@ class Decoder:
                 if is_close_enough[batch_index, kp_index]:
                     kp1 = keypoints[kp_index]
                     kp2 = keypoints[int(conn_kp_index)]
-                    graph.connect(kp1, kp2)
+                    if kp1 != kp2:  # Avoid connecting a keypoint to itself
+                        graph.connect(kp1, kp2)
 
             graphs.append(graph.resize((out_w, out_h), (in_w, in_h)))
 

@@ -205,6 +205,16 @@ class Graph:
         assert keypoint not in self.keypoints
         self._adjacency[keypoint] = set()
 
+    def edges(self) -> list[tuple[Keypoint, Keypoint]]:
+        edges = []
+        for keypoint in self.keypoints:
+            for neighbor in self._adjacency[keypoint]:
+                edge = (keypoint, neighbor)
+                edge_2 = (neighbor, keypoint)
+                if edge not in edges and edge_2 not in edges:
+                    edges.append(edge)
+        return edges
+
     def connected_graphs(self) -> "list[Graph]":
         connected_components = []
         visited = set()

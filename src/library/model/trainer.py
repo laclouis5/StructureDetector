@@ -31,6 +31,7 @@ class Trainer:
         self.global_step = 0
         self.best_loss = torch.finfo().max
         self.best_kp_reg = 0.0
+        self.best_seg_reg = 0.0
 
         if args.pretrained_model:
             self.net.load_state_dict(torch.load(args.pretrained_model, map_location=args.device))
@@ -118,7 +119,7 @@ class Trainer:
         loss_stats /= len(self.valid_dataloader)
 
         # Compute metrics
-        evaluations = self.evaluator.keypoint_evaluation
+        evaluations = self.evaluator.keypoint_evaluation  
         total = evaluations.reduce()  # Old total which is a sum (rather than an average)
         kps_prec = {label: eval.precision for label, eval in evaluations.items()}
         kps_prec["total"] = total.precision
@@ -126,6 +127,9 @@ class Trainer:
         kps_rec["total"] = total.recall
         kps_f1 = {label: eval.f1_score for label, eval in evaluations.items()}
         kps_f1["total"] = total.f1_score
+
+        seg_eval = self.evaluator.segment_evaluation
+        f1_seg = seg_eval.f1_score
 
         # Save best network
         f1_kp_reg = total.f1_score
@@ -135,12 +139,16 @@ class Trainer:
         if f1_kp_reg > self.best_kp_reg:
             self.best_kp_reg = f1_kp_reg
             self.net.save(self.save_dir / "model_best_kp_reg.pth")
+        if f1_seg > self.best_seg_reg:
+            self.best_seg_reg = f1_seg
+            self.net.save(self.save_dir / "model_best_seg_reg.pth")
 
         # Draw metrics to Tensorboard
         self.writer.add_scalars("Loss/Validation", loss_stats.__dict__, self.global_step)
         self.writer.add_scalars("Keypoint Evaluation/Precison", kps_prec, self.global_step)
         self.writer.add_scalars("Keypoint Evaluation/Recall", kps_rec, self.global_step)
         self.writer.add_scalars("Keypoint Evaluation/F1", kps_f1, self.global_step)
+        self.writer.add_scalar("Segment Evaluation/F1", f1_seg, self.global_step)
 
         # Draw predicted graph
         image = batch["image"][0]  # Last image

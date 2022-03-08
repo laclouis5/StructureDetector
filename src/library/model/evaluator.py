@@ -184,10 +184,71 @@ class Evaluator:
 
     def reset(self):
         self.keypoint_evaluation = Evaluations(self.labels)
+        self.segment_evaluation = Evaluation()
 
     def evaluate(self, prediction: Graph, annotation: Graph):
         """Assumes 'prediction' and 'annotation' are in the original input image resolution."""
         self._evaluate_keypoints(prediction, annotation)
+        self._evaluate_segments(prediction, annotation)
+
+    def _evaluate_segments(self, prediction: GraphAnnotation, annotation: GraphAnnotation):
+        img_size = annotation.image_size
+        dist_thresh = min(img_size) * self.args.dist_threshold
+        
+        pred_edges = prediction.graph.edges()
+        gt_edges = annotation.graph.edges()
+
+        tp = 0
+        accuracy = []
+        ndets = len(pred_edges)
+        npos = len(gt_edges)
+
+        visited = np.repeat(False, npos)
+
+        # An edge confidence is the mean of the confidence of its two vertices.
+        pred_edges = sorted(pred_edges,
+            key=lambda e: (e[0].score + e[1].score) / 2,
+            reverse=True)
+
+        for pred in pred_edges:
+            d1, d2 = sys.float_info.max, sys.float_info.max
+            min_dist = sys.float_info.max
+            min_idx = None
+            is_label_correct = None
+
+            for i, gt in enumerate(gt_edges):
+                p1, p2 = pred
+                g1, g2 = gt
+
+                # Config 1
+                p1g1 = p1.distance(g1)
+                p2g2 = p2.distance(g2)
+                l1 = (p1g1 + p2g2) / 2.0
+
+                # Config 2
+                p1g2 = p1.distance(g2)
+                p2g1 = p2.distance(g1)
+                l2 = (p1g2 + p2g1) / 2.0
+
+                dist = min(l1, l2)
+                if dist < min_dist:
+                    min_dist = dist
+                    min_idx = i
+
+                    if l1 <= l2:  # Config 1 wins
+                        is_label_correct = (p1.kind == g1.kind and p2.kind == g2.kind)
+                        d1, d2 = p1g1, p2g2
+                    else:  # Config 2 wins
+                        is_label_correct = (p1.kind == g2.kind and p2.kind == g1.kind)
+                        d1, d2 = p1g2, p2g1
+
+            if d1 < dist_thresh and d2 < dist_thresh and not visited[min_idx] and is_label_correct:
+                visited[min_idx] = True
+                tp += 1
+                accuracy.append(min_dist / min(img_size))
+
+        self.segment_evaluation += Evaluation(tp=tp, npos=npos, ndet=ndets, acc=accuracy)
+
 
     def _evaluate_keypoints(self, prediction: GraphAnnotation, annotation: GraphAnnotation):
         img_size = annotation.image_size
@@ -240,4 +301,9 @@ class Evaluator:
             total_eval = kp_eval.reduce()
             table.add_row("Total", *total_eval.stats(), style="bold")
         
+        rprint(table)
+
+        table = Table(*Evaluation.columns(), title="Segment Association")
+        table.add_row(*self.segment_evaluation.stats(), style="bold")
+
         rprint(table)
