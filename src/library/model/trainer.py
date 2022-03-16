@@ -148,7 +148,7 @@ class Trainer:
         self.writer.add_scalars("Keypoint Evaluation/Precison", kps_prec, self.global_step)
         self.writer.add_scalars("Keypoint Evaluation/Recall", kps_rec, self.global_step)
         self.writer.add_scalars("Keypoint Evaluation/F1", kps_f1, self.global_step)
-        self.writer.add_scalar("Segment Evaluation/F1", f1_seg, self.global_step)
+        self.writer.add_scalars("Segment Evaluation", {"F1-score": f1_seg, "Recall": seg_eval.recall, "Precision": seg_eval.precision}, self.global_step)
 
         # Draw predicted graph
         image = batch["image"][0]  # Last image
