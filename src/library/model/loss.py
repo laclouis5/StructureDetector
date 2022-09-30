@@ -46,7 +46,8 @@ class L1Loss(nn.Module):
 
     # input: (B, 2, H, W), target: (B, K, 2), inds & mask: (B, K)
     def forward(self, input, target, inds, mask):
-        if (numel := mask.sum()) == 0: return 0
+        numel = mask.sum()
+        if numel == 0: return 0
         preds = transpose_and_gather(input, inds)  # (B, K, 2)
         loss = torch.abs((preds - target) * mask[..., None]).sum()  # (1)
         return loss / numel
