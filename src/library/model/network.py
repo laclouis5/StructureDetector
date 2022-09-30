@@ -35,7 +35,7 @@ class ESCPN(nn.Module):
     def __init__(self, in_channels, out_channels: int, scale: int) -> None:
         super().__init__()
 
-        self.conv = nn.Conv2d(in_channels, out_channels * scale**2, kernel_size=1)
+        self.conv = nn.Conv2d(in_channels, out_channels * scale**2, kernel_size=3)
         self.up = nn.PixelShuffle(scale)
 
     def forward(self, input):
