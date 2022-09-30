@@ -3,8 +3,6 @@ from tqdm.contrib import tzip
 import torch
 from PIL import Image
 
-from library.utils.visualization import draw_keypoints
-
 
 if __name__ == "__main__":
     args = args = Arguments().parse()
