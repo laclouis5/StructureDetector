@@ -1,8 +1,10 @@
+from .utils import get_unique_color_map, set_seed
+
 import argparse
 import json
 from pathlib import Path
+from multiprocessing import cpu_count
 import torch
-from .utils import get_unique_color_map, set_seed
 
 
 class Arguments:
@@ -121,7 +123,7 @@ class Arguments:
 
         args.use_cuda = torch.cuda.is_available()
         args.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        args.num_workers = 8 if args.use_cuda else 4
+        args.num_workers = min(cpu_count(), 8)
 
         if torch.backends.cudnn.is_available():
             torch.backends.cudnn.benchmark = True

@@ -48,13 +48,15 @@ class Trainer:
             batch_size=args.batch_size, collate_fn=CropDataset.collate_fn, shuffle=True,
             pin_memory=args.use_cuda,
             num_workers=args.num_workers,
+            persistent_workers=True,
             drop_last=True)
 
         self.valid_set = CropDataset(args, args.valid_dir, transforms=ValidationAugmentation(args))
         self.valid_dataloader = data.DataLoader(self.valid_set,
             batch_size=1, collate_fn=CropDataset.collate_fn, shuffle=True,
             pin_memory=args.use_cuda,
-            num_workers=args.num_workers)
+            num_workers=args.num_workers,
+            persistent_worker=True)
 
         # Logging
         self.save_dir = Path("trainings") / f"{datetime.now():%Y-%m-%d_%H-%M-%s}"

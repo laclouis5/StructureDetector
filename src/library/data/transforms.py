@@ -141,7 +141,7 @@ class Encode:
         kp_idx = 0
 
         sigma = self.sigma_gauss * min(out_w, out_h) / 3
-        (Y, X) = torch.meshgrid(torch.arange(out_h), torch.arange(out_w))
+        (Y, X) = torch.meshgrid(torch.arange(out_h), torch.arange(out_w), indexing="ij")
 
         heatmaps = torch.zeros(len(self.labels) + len(self.parts), out_h, out_w)
         anchor_inds = torch.zeros(self.max_objects, dtype=torch.long)
