@@ -415,12 +415,12 @@ def topk(scores: torch.Tensor, k: int = 100):
     topk_scores, topk_inds = torch.topk(scores.view(batch, cat, -1), k)
 
     # (B, C, K)
-    topk_ys = (topk_inds // width).float()
-    topk_xs = (topk_inds % width).float()
+    topk_ys = torch.div(topk_inds, width, rounding_mode="floor").float()
+    topk_xs = torch.remainder(topk_inds, width).float()
 
     # (B, K)
     topk_score, topk_ind = torch.topk(topk_scores.view(batch, -1), k)
-    topk_clses = (topk_ind // k)
+    topk_clses = torch.div(topk_ind, k, rounding_mode="floor").float()
 
     # (B, K)
     topk_inds = gather(topk_inds.view(batch, -1, 1), topk_ind).squeeze(-1)
