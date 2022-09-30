@@ -44,6 +44,7 @@ class Trainer:
         self.scheduler = torch.optim.lr_scheduler.StepLR(self.optimizer, step_size=args.lr_step)
 
         self.train_set = CropDataset(args, args.train_dir, transforms=TrainAugmentation(args))
+        self.train_set.localize_image_names()
         self.train_dataloader = data.DataLoader(self.train_set,
             batch_size=args.batch_size, collate_fn=CropDataset.collate_fn, shuffle=True,
             pin_memory=args.use_cuda,
@@ -52,6 +53,7 @@ class Trainer:
             drop_last=True)
 
         self.valid_set = CropDataset(args, args.valid_dir, transforms=ValidationAugmentation(args))
+        self.valid_set.localize_image_names()
         self.valid_dataloader = data.DataLoader(self.valid_set,
             batch_size=1, collate_fn=CropDataset.collate_fn, shuffle=True,
             pin_memory=args.use_cuda,
