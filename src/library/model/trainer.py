@@ -56,7 +56,7 @@ class Trainer:
             batch_size=1, collate_fn=CropDataset.collate_fn, shuffle=True,
             pin_memory=args.use_cuda,
             num_workers=args.num_workers,
-            persistent_worker=True)
+            persistent_workers=True)
 
         # Logging
         self.save_dir = Path("trainings") / f"{datetime.now():%Y-%m-%d_%H-%M-%s}"
