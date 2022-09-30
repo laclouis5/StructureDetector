@@ -1,6 +1,6 @@
 import torch
 import torch.nn as nn
-import torchvision
+from torchvision.models import resnet34, ResNet34_Weights
 
 
 class Fpn(nn.Module):
@@ -40,7 +40,7 @@ class Network(nn.Module):
         self.out_channels = self.label_count + self.part_count + 4  # M+N+4
         self.fpn_depth = args.fpn_depth
 
-        resnet = torchvision.models.resnet34(pretrained=pretrained)
+        resnet = resnet34(weights=ResNet34_Weights.DEFAULT if pretrained else None)
 
         self.adpater = nn.Sequential(resnet.conv1, resnet.bn1, resnet.relu, resnet.maxpool)  # /4 -> /4
 
