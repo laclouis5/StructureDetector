@@ -8,7 +8,7 @@ import torch.nn as nn
 import torchvision.transforms.functional as F
 import torch.utils.data as data
 from torch.utils.tensorboard import SummaryWriter
-from tqdm.autonotebook import tqdm
+from tqdm import tqdm
 from datetime import datetime
 from pathlib import Path
 

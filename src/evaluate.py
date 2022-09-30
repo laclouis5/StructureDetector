@@ -1,6 +1,6 @@
 from library import *
 import torch
-from tqdm.autonotebook import tqdm
+from tqdm import tqdm
 
 
 def main():
