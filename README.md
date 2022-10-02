@@ -7,26 +7,20 @@ SDNet is a BMVC 2021 published work : https://www.bmvc2021-virtualconference.com
 
 # Installation
 Requirements:
-- Python > 3.8
 - Nvidia GPU with CUDA/CUDNN installed (recommended)
 
-We recommend using a virtual environment:
-```zsh
+We recommend using a conda environment:
+```shell
+git clone https://github.com/louislac/StructureDetector
 cd StructureDetector
-python3 -m venv env
-source env/bin/activate
-```
-
-Install required Python packages:
-```zsh
-pip install -U pip
-pip install -r requirements.txt
+conda env create
+conda activate sdnet
 ```
 
 # Reproduce Our Results
 Download and put the validation dataset in `database/valid/` at the root directory of the repo, then execute this command:
 
-```zsh
+```shell
 python src/evaluate.py --valid_dir database/valid --load_model model_best_classif.pth --anchor_name stem --conf_threshold 0.4 --decoder_dist_thresh 0.1 --dist_threshold 0.05
 ```
 
@@ -84,17 +78,17 @@ For annotating crops you can use [this repo](https://github.com/laclouis5/Struct
 
 ## Training
 Split your dataset into two folders: one for training and the other for validation. Optionally launch TensorBoard to monitor training (use a secondary shell):
-```zsh
+```shell
 tensorboard --logdir runs
 ```
 
 Launch training with:
-```zsh
+```shell
 python sources/train.py --train_dir train_dir/ --valid_dir valid_dir/
 ```
 
 Customize training (epochs, learning rate, ...) by specifying options in the command line arguments. Help is available:
-```zsh
+```shell
 python sources/train.py -h
 ```
 
