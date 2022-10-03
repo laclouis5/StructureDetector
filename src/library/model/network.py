@@ -3,42 +3,15 @@ import torch.nn as nn
 from torchvision.models import resnet34, ResNet34_Weights
 
 
-class Fpn(nn.Module):
-
-    def __init__(self, in_channels, out_channels):
-        super().__init__()
-
-        self.up = nn.Upsample(scale_factor=2)
-        self.lateral = nn.Conv2d(in_channels, out_channels, kernel_size=1)
-        self.conv = nn.Sequential(
-            nn.Conv2d(out_channels, out_channels, kernel_size=3, padding=1, bias=False),
-            nn.BatchNorm2d(out_channels),
-            nn.ReLU(inplace=True))
-
-    def forward(self, input, shortcut):
-        return self.conv(self.up(input) + self.lateral(shortcut))
-
-
-class Head(nn.Module):
-
-    def __init__(self, in_channels, out_channels):
-        super().__init__()
-
-        self.conv = nn.Conv2d(in_channels, out_channels, kernel_size=1)
-
-    def forward(self, input):
-        return self.conv(input)
-
-
 class ESCPN(nn.Module):
 
-    def __init__(self, in_channels, out_channels: int, scale: int) -> None:
+    def __init__(self, in_channels: int, out_channels: int, scale: int) -> None:
         super().__init__()
 
         self.conv = nn.Conv2d(in_channels, out_channels * scale**2, kernel_size=3)
         self.up = nn.PixelShuffle(scale)
 
-    def forward(self, input):
+    def forward(self, input: torch.Tensor) -> torch.Tensor:
         return self.up(self.conv(input))
 
 
@@ -50,7 +23,6 @@ class Network(nn.Module):
         self.label_count = len(args.labels)  # M
         self.part_count = len(args.parts)  # N
         self.out_channels = self.label_count + self.part_count + 4  # M+N+4
-        self.fpn_depth = args.fpn_depth
 
         resnet = resnet34(weights=ResNet34_Weights.DEFAULT if pretrained else None)
 
@@ -63,7 +35,7 @@ class Network(nn.Module):
 
         self.head = ESCPN(512, self.out_channels, scale=8)  # x8 -> /4
 
-    def forward(self, x):  # (B, 3, H, W)
+    def forward(self, x: torch.Tensor) -> torch.Tensor:  # (B, 3, H, W)
         p1 = self.adpater(x)  # (B, 64, H/4, W/4)
 
         p2 = self.down1(p1)  # (B, 64, H/4, W/4)
