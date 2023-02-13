@@ -9,7 +9,6 @@ from xxhash import xxh64_digest
 
 
 class Keypoint:
-
     def __init__(self, kind, x, y, score=None):
         self.kind = kind
         self.x = x
@@ -41,7 +40,11 @@ class Keypoint:
         return copy.deepcopy(self).normalize(size)
 
     def json_repr(self):
-        return {"kind": self.kind, "location": {"x": self.x, "y": self.y}, "score": self.score}
+        return {
+            "kind": self.kind,
+            "location": {"x": self.x, "y": self.y},
+            "score": self.score,
+        }
 
     @staticmethod
     def from_json(json_dict):
@@ -57,7 +60,6 @@ class Keypoint:
 
 
 class Box:
-
     def __init__(self, x_min, y_min, x_max, y_max):
         self.x_min = x_min
         self.y_min = y_min
@@ -67,7 +69,7 @@ class Box:
     @property
     def x_mid(self):
         return (self.x_max + self.x_min) / 2
-    
+
     @property
     def y_mid(self):
         return (self.y_max + self.y_min) / 2
@@ -75,7 +77,7 @@ class Box:
     @property
     def width(self):
         return abs(self.x_max - self.x_min)
-    
+
     @property
     def height(self):
         return abs(self.y_max - self.y_min)
@@ -104,7 +106,12 @@ class Box:
         return copy.deepcopy(self).normalize(size)
 
     def yolo_coords(self, size):
-        return self.x_mid / size[0], self.y_mid / size[1], self.width / size[0], self.height / size[1]
+        return (
+            self.x_mid / size[0],
+            self.y_mid / size[1],
+            self.width / size[0],
+            self.height / size[1],
+        )
 
     def standardize(self):
         if self.x_min > self.x_max:
@@ -117,13 +124,23 @@ class Box:
         return copy.deepcopy(self).standardize()
 
     def json_repr(self):
-        return {"x_min": self.x_min, "y_min": self.y_min, "x_max": self.x_max, "y_max": self.y_max}
+        return {
+            "x_min": self.x_min,
+            "y_min": self.y_min,
+            "x_max": self.x_max,
+            "y_max": self.y_max,
+        }
 
     @staticmethod
     def from_json(json_dict):
         if json_dict is None:
-            return None 
-        x_min, y_min, x_max, y_max = json_dict["x_min"], json_dict["y_min"], json_dict["x_max"], json_dict["y_max"]
+            return None
+        x_min, y_min, x_max, y_max = (
+            json_dict["x_min"],
+            json_dict["y_min"],
+            json_dict["x_max"],
+            json_dict["y_max"],
+        )
         return Box(x_min, y_min, x_max, y_max)
 
     def __repr__(self):
@@ -131,7 +148,6 @@ class Box:
 
 
 class Object:
-
     def __init__(self, name, anchor, parts=None, box=None):
         self.name = name
         self.anchor = anchor
@@ -173,7 +189,7 @@ class Object:
 
     def normalize(self, size):
         self.anchor.normalize(size)
-        if self.box is not None: 
+        if self.box is not None:
             self.box.normalize(size)
 
         for part in self.parts:
@@ -200,12 +216,16 @@ class Object:
         for part in json_dict["parts"]:
             part = Keypoint.from_json(part)
             if part.kind == anchor_name:
-                assert anchor is None, f"More than one anchor found for object, achor must be unique."
+                assert (
+                    anchor is None
+                ), f"More than one anchor found for object, achor must be unique."
                 anchor = part
             else:
                 parts.append(part)
 
-        assert anchor is not None, f"Anchor part with name '{anchor_name}' not found while decoding JSON file."
+        assert (
+            anchor is not None
+        ), f"Anchor part with name '{anchor_name}' not found while decoding JSON file."
         return Object(name, anchor, parts, box)
 
     @property
@@ -217,7 +237,6 @@ class Object:
 
 
 class ImageAnnotation:
-
     def __init__(self, image_path, objects=None, img_size=None):
         self.image_path = Path(image_path)
         self.objects = objects or []
@@ -239,7 +258,7 @@ class ImageAnnotation:
             obj.normalize(size)
 
         return self
-        
+
     def normalized(self, size=None):
         return copy.deepcopy(self).normalize(size)
 
@@ -289,7 +308,6 @@ class ImageAnnotation:
 
 
 class AverageMeter:
-
     def __init__(self):
         self.reset()
 
@@ -322,7 +340,7 @@ def set_seed(seed="1975846251"):
 # feat: (B, J, C), ind: (B, N)
 def gather(feat: torch.Tensor, ind: torch.Tensor):
     ind = ind.unsqueeze(-1).expand(-1, -1, feat.size(2))  #  (B, N, C)
-    return feat.gather(1, ind) # (B, N, C)
+    return feat.gather(1, ind)  # (B, N, C)
 
 
 # feat: (B, C, H, W), ind: (B, N)
@@ -340,7 +358,7 @@ def clamped_sigmoid(input: torch.Tensor):
 
 
 def clamp_in_0_1(tensor: torch.Tensor):
-    return torch.clamp(tensor, min=1e-6, max=1-1e-6)
+    return torch.clamp(tensor, min=1e-6, max=1 - 1e-6)
 
 
 def clip_annotation(annotation, img_size):
@@ -398,7 +416,7 @@ def vflip_annotation(annotation, img_size):
 
 
 def gaussian_2d(X, Y, mu1, mu2, sigma):
-    return torch.exp((-(X - mu1)**2 - (Y - mu2)**2) / (2 * sigma**2))
+    return torch.exp((-((X - mu1) ** 2) - (Y - mu2) ** 2) / (2 * sigma**2))
 
 
 # heatmaps: (B, C, H, W)
@@ -415,12 +433,12 @@ def topk(scores: torch.Tensor, k: int = 100):
     topk_scores, topk_inds = torch.topk(scores.view(batch, cat, -1), k)
 
     # (B, C, K)
-    topk_ys = torch.div(topk_inds, width, rounding_mode="floor").float()
+    topk_ys = torch.div(topk_inds.float(), width, rounding_mode="floor")
     topk_xs = torch.remainder(topk_inds, width).float()
 
     # (B, K)
     topk_score, topk_ind = torch.topk(topk_scores.view(batch, -1), k)
-    topk_clses = torch.div(topk_ind, k, rounding_mode="floor").float()
+    topk_clses = torch.div(topk_ind.float(), k, rounding_mode="floor")
 
     # (B, K)
     topk_inds = gather(topk_inds.view(batch, -1, 1), topk_ind).squeeze(-1)
