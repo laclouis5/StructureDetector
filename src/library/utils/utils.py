@@ -339,8 +339,7 @@ def set_seed(seed="1975846251"):
 
 # feat: (B, J, C), ind: (B, N)
 def gather(feat: torch.Tensor, ind: torch.Tensor):
-    ind = ind.unsqueeze(-1).expand(-1, -1, feat.size(2))  #  (B, N, C)
-    return feat.gather(1, ind)  # (B, N, C)
+    return feat.squeeze(-1).gather(1, ind.squeeze(-1))  # (B, N, C)
 
 
 # feat: (B, C, H, W), ind: (B, N)
@@ -441,9 +440,9 @@ def topk(scores: torch.Tensor, k: int = 100):
     topk_clses = torch.div(topk_ind.float(), k, rounding_mode="floor")
 
     # (B, K)
-    topk_inds = gather(topk_inds.view(batch, -1, 1), topk_ind).squeeze(-1)
-    topk_ys = gather(topk_ys.view(batch, -1, 1), topk_ind).squeeze(-1)
-    topk_xs = gather(topk_xs.view(batch, -1, 1), topk_ind).squeeze(-1)
+    topk_inds = gather(topk_inds.view(batch, -1), topk_ind)
+    topk_ys = gather(topk_ys.view(batch, -1), topk_ind)
+    topk_xs = gather(topk_xs.view(batch, -1), topk_ind)
 
     return topk_score, topk_inds, topk_clses, topk_ys, topk_xs  # (B, K)
 

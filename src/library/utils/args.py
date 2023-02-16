@@ -240,8 +240,7 @@ class Arguments:
         else:
             args.device = torch.device("cpu")
 
-        # args.num_workers = min(cpu_count(), 8)
-        args.num_workers = 0  # Disable multiprocessing
+        args.num_workers = min(cpu_count(), 4)
 
         if args.use_cuda:
             torch.backends.cudnn.benchmark = True
