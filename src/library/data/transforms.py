@@ -5,7 +5,6 @@ import torch
 
 
 class RandomHorizontalFlip:
-
     def __init__(self, prob=0.5):
         self.prob = prob
 
@@ -20,7 +19,6 @@ class RandomHorizontalFlip:
 
 
 class RandomVerticalFlip:
-
     def __init__(self, prob=0.5):
         self.prob = prob
 
@@ -35,13 +33,10 @@ class RandomVerticalFlip:
 
 
 class RandomColorJitter:
-
     def __init__(self, brightness=0.25, contrast=0.25, saturation=0.15, hue=0.05):
         self.transform = torchtf.ColorJitter(
-            brightness=brightness,
-            contrast=contrast,
-            saturation=saturation,
-            hue=hue)
+            brightness=brightness, contrast=contrast, saturation=saturation, hue=hue
+        )
 
     def __call__(self, input, target):
         return (self.transform(input), target)
@@ -72,10 +67,9 @@ class Resize:
 
 
 class RandomResize:
-
     def __init__(self, args, ratios=None):
         if ratios is None:
-            ratios = [1 + 1/16 * ratio for ratio in range(-4, 5)]
+            ratios = [1 + 1 / 16 * ratio for ratio in range(-4, 5)]
 
         for ratio in ratios:
             assert (ratio * 32) % 32 == 0, "Ratios should resolve to multiple of 32"
@@ -97,7 +91,6 @@ class RandomResize:
 
 
 class Compose:
-
     def __init__(self, transforms):
         self.transforms = transforms
 
@@ -112,7 +105,6 @@ class Compose:
 
 
 class Normalize:
-
     def __init__(self, mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]):
         self.transform = torchtf.Normalize(mean=mean, std=std)
 
@@ -125,7 +117,6 @@ class Normalize:
 
 
 class Encode:
-
     def __init__(self, args):
         self.down_ratio = args.down_ratio
         self.labels = args.labels
@@ -155,7 +146,7 @@ class Encode:
         target = clip_annotation(target, (img_w, img_h))
         resized_target = target.resized((img_w, img_h), (out_w, out_h))
 
-        for obj_idx, obj in enumerate(resized_target.objects[:self.max_objects]):
+        for obj_idx, obj in enumerate(resized_target.objects[: self.max_objects]):
             label_index = self.labels[obj.name]
 
             anchor_hm = gaussian_2d(X, Y, int(obj.x), int(obj.y), sigma)
@@ -185,19 +176,25 @@ class Encode:
                 part_mask[kp_idx] = True
 
                 kp_idx += 1
-                if kp_idx == self.max_parts: break
+                if kp_idx == self.max_parts:
+                    break
 
-            if kp_idx == self.max_parts: break
+            if kp_idx == self.max_parts:
+                break
 
         return {
             "image": input,
-            "anchor_hm": heatmaps[:len(self.labels)],
-            "part_hm": heatmaps[len(self.labels):],
-            "anchor_inds": anchor_inds, "part_inds": parts_inds,
-            "anchor_offsets": anchor_offs, "part_offsets": part_offs,
+            "anchor_hm": heatmaps[: len(self.labels)],
+            "part_hm": heatmaps[len(self.labels) :],
+            "anchor_inds": anchor_inds,
+            "part_inds": parts_inds,
+            "anchor_offsets": anchor_offs,
+            "part_offsets": part_offs,
             "embeddings": embeddings,
-            "anchor_mask": anchor_mask, "part_mask": part_mask,
-            "annotation": target}
+            "anchor_mask": anchor_mask,
+            "part_mask": part_mask,
+            "annotation": target,
+        }
 
     def __repr__(self):
         return f"Encode(max_objects: {self.max_objects}, max_parts: {self.max_parts}, down_ratio: {self.down_ratio}, nb_labels: {len(self.labels)}, nb_parts: {len(self.parts)})"
@@ -209,18 +206,26 @@ class TrainAugmentation:
 
     def __init__(self, args):
         self.args = args
-        self.transform = Compose([
-            Resize((args.width, args.height)),
-            RandomColorJitter(),
-            RandomHorizontalFlip(),
-            RandomVerticalFlip(),
-            Normalize(),
-            Encode(args),
-        ]) if not args.no_augmentation else Compose([
-            Resize((args.width, args.height)),
-            Normalize(),
-            Encode(args),
-        ])
+        self.transform = (
+            Compose(
+                [
+                    Resize((args.width, args.height)),
+                    RandomColorJitter(),
+                    RandomHorizontalFlip(),
+                    RandomVerticalFlip(),
+                    Normalize(),
+                    Encode(args),
+                ]
+            )
+            if not args.no_augmentation
+            else Compose(
+                [
+                    Resize((args.width, args.height)),
+                    Normalize(),
+                    Encode(args),
+                ]
+            )
+        )
 
     def trigger_random_resize(self):
         if self.args.no_augmentation:
@@ -239,13 +244,14 @@ class TrainAugmentation:
 
 
 class ValidationAugmentation:
-
     def __init__(self, args):
-        self.transform = Compose([
-            Resize((args.width, args.height)),
-            Normalize(),
-            Encode(args),
-        ])
+        self.transform = Compose(
+            [
+                Resize((args.width, args.height)),
+                Normalize(),
+                Encode(args),
+            ]
+        )
 
     def __call__(self, input, target):
         return self.transform(input, target)
@@ -255,15 +261,16 @@ class ValidationAugmentation:
 
 
 class PredictionTransformation:
-
     def __init__(self, args):
-        self.tf = torchtf.Compose([
-            torchtf.Resize((args.height, args.width)),
-            torchtf.ToTensor(),
-            torchtf.Normalize(
-                mean=[0.485, 0.456, 0.406],
-                std=[0.229, 0.224, 0.225])
-        ])
+        self.tf = torchtf.Compose(
+            [
+                torchtf.Resize((args.height, args.width)),
+                torchtf.ToTensor(),
+                torchtf.Normalize(
+                    mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]
+                ),
+            ]
+        )
 
     def __call__(self, input):
         return self.tf(input)

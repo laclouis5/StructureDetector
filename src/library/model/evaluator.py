@@ -8,12 +8,11 @@ from copy import copy
 
 
 class Evaluation:
-
     def __init__(self, tp=0, npos=0, ndet=0, acc=None, counts=None):
         Evaluation._precondition(tp, npos, ndet)
 
         self.tp = tp
-        self.npos = npos  
+        self.npos = npos
         self.ndet = ndet
         self.acc = acc or []
         self.count_errors = counts or []
@@ -66,21 +65,34 @@ class Evaluation:
 
     @property
     def acc_err(self):
-        return np.std(self.acc) / np.sqrt(len(self.acc)) if len(self.acc) != 0 else float("nan")
-        
+        return (
+            np.std(self.acc) / np.sqrt(len(self.acc))
+            if len(self.acc) != 0
+            else float("nan")
+        )
+
     def stats(self):
-        return f"{self.npos}", f"{self.ndet}", f"{self.recall:.2%}", f"{self.precision:.2%}", f"{self.f1_score:.2%}", f"{self.avg_acc:.4%}", f"{self.acc_err:.4%}"
+        return (
+            f"{self.npos}",
+            f"{self.ndet}",
+            f"{self.recall:.2%}",
+            f"{self.precision:.2%}",
+            f"{self.f1_score:.2%}",
+            f"{self.avg_acc:.4%}",
+            f"{self.acc_err:.4%}",
+        )
 
     @staticmethod
     def columns():
         return (
-            Column("Gts.", justify="right"), 
-            Column("Preds.", justify="right"), 
-            Column("Rec.", justify="right"), 
-            Column("Prec.", justify="right"), 
-            Column("F1 Score", justify="right", style="green"), 
-            Column("L. Acc.", justify="right"), 
-            Column("L. Err.", justify="right"))
+            Column("Gts.", justify="right"),
+            Column("Preds.", justify="right"),
+            Column("Rec.", justify="right"),
+            Column("Prec.", justify="right"),
+            Column("F1 Score", justify="right", style="green"),
+            Column("L. Acc.", justify="right"),
+            Column("L. Err.", justify="right"),
+        )
 
     def __repr__(self):
         return f"f1: {self.f1_score:.2%}, rec: {self.recall:.2%}, prec: {self.precision:.2%}, npos: {self.npos}, ndet: {self.ndet}, tp/fp/fn: {self.tp}/{self.fp}/{self.fn}, avg_acc: {self.avg_acc:.2}"
@@ -100,13 +112,14 @@ class Evaluation:
 
     @staticmethod
     def _precondition(tp, npos, ndet):
-        assert tp >= 0 and ndet >= 0 and npos >= 0, "tp, npos and ndet should be positive"
+        assert (
+            tp >= 0 and ndet >= 0 and npos >= 0
+        ), "tp, npos and ndet should be positive"
         assert tp <= ndet, "tp must be lower than or equal to ndet"
         assert tp <= npos, "tp must be lower than or equal to npos"
 
 
 class Evaluations:
-
     def __init__(self, labels=None):
         self.evals = {label: Evaluation() for label in labels} if labels else {}
 
@@ -131,33 +144,41 @@ class Evaluations:
         return len(self.evals)
 
     def __add__(self, other):
-        assert self.labels == other.labels, "The Evaluations should have the same labels"
+        assert (
+            self.labels == other.labels
+        ), "The Evaluations should have the same labels"
         evaluations = Evaluations()
-        evaluations.evals = {label: self.evals[label] + evaluation 
-            for label, evaluation in other.items()}
+        evaluations.evals = {
+            label: self.evals[label] + evaluation for label, evaluation in other.items()
+        }
         return evaluations
 
     def __iadd__(self, other):
-        assert self.labels == other.labels, "The Evaluations should have the same labels"
+        assert (
+            self.labels == other.labels
+        ), "The Evaluations should have the same labels"
         for label, evaluation in other.items():
             self.evals[label] += evaluation
         return self
 
     def __or__(self, other):
         output = Evaluations()
-        output.evals = {label: self[label] + other[label] 
-            for label in self.labels & other.labels}
-        output.evals.update({label: self[label] 
-            for label in self.labels - other.labels})
-        output.evals.update({label: other[label] 
-            for label in other.labels - self.labels})
+        output.evals = {
+            label: self[label] + other[label] for label in self.labels & other.labels
+        }
+        output.evals.update(
+            {label: self[label] for label in self.labels - other.labels}
+        )
+        output.evals.update(
+            {label: other[label] for label in other.labels - self.labels}
+        )
         return output
 
     def __ior__(self, other):
-        self |= {label: other[label] 
-            for label in other.labels - self.labels}
-        self |= {label: self[label] + other[label] 
-            for label in self.labels & other.labels}
+        self |= {label: other[label] for label in other.labels - self.labels}
+        self |= {
+            label: self[label] + other[label] for label in self.labels & other.labels
+        }
         return self
 
     def reduce(self):
@@ -176,12 +197,12 @@ class Evaluations:
         if len(self) > 1:
             description += f"total: {self.reduce()}\n"
         description += "\n".join(
-            f"{label}: {evaluation}" for (label, evaluation) in self.items())
+            f"{label}: {evaluation}" for (label, evaluation) in self.items()
+        )
         return description
 
 
 class Evaluator:
-
     def __init__(self, args):
         self.args = args
         self.labels = args.labels.keys()
@@ -199,9 +220,16 @@ class Evaluator:
     def kps_eval(self):
         return self.anchor_eval | self.part_eval
 
-    def accumulate(self, prediction, annotation, part_heatmap=None, eval_csi=False, eval_classif=False):
+    def accumulate(
+        self,
+        prediction,
+        annotation,
+        part_heatmap=None,
+        eval_csi=False,
+        eval_classif=False,
+    ):
         self.anchor_eval += self.eval_anchor(prediction, annotation)
-        
+
         # self.part_eval += self.eval_part_2(prediction, annotation)
         if part_heatmap is not None:
             self.part_eval += self.eval_part(annotation, part_heatmap)
@@ -213,12 +241,8 @@ class Evaluator:
     def eval_anchor(self, prediction, annotation):
         img_size = annotation.img_size
 
-        annotation = annotation.resized(
-            (self.args.width, self.args.height),
-            img_size)
-        prediction = prediction.resized(
-            (self.args.width, self.args.height),
-            img_size)
+        annotation = annotation.resized((self.args.width, self.args.height), img_size)
+        prediction = prediction.resized((self.args.width, self.args.height), img_size)
 
         dist_thresh = min(img_size) * self.args.dist_threshold
         preds = dict_grouping(prediction.objects, key=lambda obj: obj.name)
@@ -234,8 +258,9 @@ class Evaluator:
             res.ndet = len(preds_label)
             res.npos = len(gts_label)
 
-            preds_label = sorted(preds_label, 
-                key=lambda obj: obj.anchor.score, reverse=True)
+            preds_label = sorted(
+                preds_label, key=lambda obj: obj.anchor.score, reverse=True
+            )
             visited = np.repeat(False, len(gts_label))
 
             for pred in preds_label:
@@ -258,12 +283,12 @@ class Evaluator:
     def eval_part(self, annotation, part_heatmap):
         img_size = annotation.img_size
 
-        annotation = annotation.resized(
-            (self.args.width, self.args.height),
-            img_size)
+        annotation = annotation.resized((self.args.width, self.args.height), img_size)
 
-        part_heatmap = (kp.resized((self.args.width, self.args.height), img_size) 
-            for kp in part_heatmap)
+        part_heatmap = (
+            kp.resized((self.args.width, self.args.height), img_size)
+            for kp in part_heatmap
+        )
 
         dist_thresh = min(img_size) * self.args.dist_threshold
 
@@ -282,9 +307,9 @@ class Evaluator:
             res_kp.ndet = len(preds_kp_label)
             res_kp.npos = len(gts_kp_label)
 
-            preds_kp_label = sorted(preds_kp_label,
-                key=lambda kp: kp.score,
-                reverse=True)
+            preds_kp_label = sorted(
+                preds_kp_label, key=lambda kp: kp.score, reverse=True
+            )
             visited_kp = np.repeat(False, len(gts_kp_label))
 
             for pred_kp in preds_kp_label:
@@ -309,17 +334,13 @@ class Evaluator:
         """Only keeps leaves that have been associated."""
         img_size = annotation.img_size
 
-        annotation = annotation.resized(
-            (self.args.width, self.args.height),
-            img_size)
-        prediction = prediction.resized(
-            (self.args.width, self.args.height),
-            img_size)
+        annotation = annotation.resized((self.args.width, self.args.height), img_size)
+        prediction = prediction.resized((self.args.width, self.args.height), img_size)
 
         dist_thresh = min(img_size) * self.args.dist_threshold
-        
+
         preds = [part for obj in prediction.objects for part in obj.parts]
-        preds = dict_grouping(preds, key= lambda part: part.kind)
+        preds = dict_grouping(preds, key=lambda part: part.kind)
         gts = [part for obj in annotation.objects for part in obj.parts]
         gts = dict_grouping(gts, key=lambda part: part.kind)
 
@@ -333,8 +354,7 @@ class Evaluator:
             res.ndet = len(preds_label)
             res.npos = len(gts_label)
 
-            preds_label = sorted(preds_label, 
-                key=lambda p: p.score, reverse=True)
+            preds_label = sorted(preds_label, key=lambda p: p.score, reverse=True)
             visited = np.repeat(False, len(gts_label))
 
             for pred in preds_label:
@@ -356,12 +376,8 @@ class Evaluator:
 
     def eval_csi(self, prediction, annotation):
         img_size = annotation.img_size
-        annotation = annotation.resized(
-            (self.args.width, self.args.height),
-            img_size)
-        prediction = prediction.resized(
-            (self.args.width, self.args.height),
-            img_size)
+        annotation = annotation.resized((self.args.width, self.args.height), img_size)
+        prediction = prediction.resized((self.args.width, self.args.height), img_size)
 
         dist_thresh = min(img_size) * self.args.dist_threshold
 
@@ -378,8 +394,9 @@ class Evaluator:
             res.ndet = len(preds_label)
             res.npos = len(gts_label)
 
-            preds_label = sorted(preds_label,
-                key=lambda obj: obj.anchor.score, reverse=True)
+            preds_label = sorted(
+                preds_label, key=lambda obj: obj.anchor.score, reverse=True
+            )
             visited = np.repeat(False, len(gts_label))
 
             for pred in preds_label:
@@ -402,24 +419,24 @@ class Evaluator:
     @staticmethod
     def get_classification_labels():
         """WARNING: Hardcoded"""
-        return [f"bean_{index}" for index in range(10)] + [f"maize_{index}" for index in range(10)]
+        return [f"bean_{index}" for index in range(10)] + [
+            f"maize_{index}" for index in range(10)
+        ]
 
     def eval_classif(self, prediction, annotation):
         img_size = annotation.img_size
-        annotation = annotation.resized(
-            (self.args.width, self.args.height),
-            img_size)
-        prediction = prediction.resized(
-            (self.args.width, self.args.height),
-            img_size)
+        annotation = annotation.resized((self.args.width, self.args.height), img_size)
+        prediction = prediction.resized((self.args.width, self.args.height), img_size)
 
         img_w, img_h = img_size
         dist_thresh = min(img_w, img_h) * self.args.dist_threshold
 
-        preds = dict_grouping(prediction.objects, 
-            key=lambda obj: f"{obj.name}_{obj.nb_parts}")
-        gts = dict_grouping(annotation.objects, 
-            key=lambda obj: f"{obj.name}_{obj.nb_parts}")
+        preds = dict_grouping(
+            prediction.objects, key=lambda obj: f"{obj.name}_{obj.nb_parts}"
+        )
+        gts = dict_grouping(
+            annotation.objects, key=lambda obj: f"{obj.name}_{obj.nb_parts}"
+        )
         labels = Evaluator.get_classification_labels()
         result = Evaluations(labels)
 
@@ -431,7 +448,9 @@ class Evaluator:
             res.ndet = len(preds_label)
             res.npos = len(gts_label)
 
-            preds_label = sorted(preds_label, key=lambda obj: obj.anchor.score, reverse=True)
+            preds_label = sorted(
+                preds_label, key=lambda obj: obj.anchor.score, reverse=True
+            )
             visited = np.repeat(False, len(gts_label))
 
             for pred in preds_label:
@@ -453,17 +472,17 @@ class Evaluator:
 
     def eval_classif_2(self, prediction, annotation):
         img_size = annotation.img_size
-        annotation = annotation.resized(
-            (self.args.width, self.args.height),
-            img_size)
-        prediction = prediction.resized(
-            (self.args.width, self.args.height),
-            img_size)
+        annotation = annotation.resized((self.args.width, self.args.height), img_size)
+        prediction = prediction.resized((self.args.width, self.args.height), img_size)
 
         dist_thresh = min(img_size) * self.args.dist_threshold
 
-        preds = dict_grouping(prediction.objects, key=lambda obj: f"{obj.name}_{obj.nb_parts}")
-        _gts = dict_grouping(annotation.objects, key=lambda obj: f"{obj.name}_{obj.nb_parts}")
+        preds = dict_grouping(
+            prediction.objects, key=lambda obj: f"{obj.name}_{obj.nb_parts}"
+        )
+        _gts = dict_grouping(
+            annotation.objects, key=lambda obj: f"{obj.name}_{obj.nb_parts}"
+        )
         gts = annotation.objects
         visited = [False] * len(gts)
         labels = Evaluator.get_classification_labels()
@@ -477,7 +496,9 @@ class Evaluator:
             res.ndet = len(preds_label)
             res.npos = len(gts_label)
 
-            preds_label = sorted(preds_label, key=lambda obj: obj.anchor.score, reverse=True)
+            preds_label = sorted(
+                preds_label, key=lambda obj: obj.anchor.score, reverse=True
+            )
 
             for pred in preds_label:
                 best_dist = sys.float_info.max
@@ -489,15 +510,19 @@ class Evaluator:
                         best_dist = dist
                         idx_best = i
 
-                if best_dist > dist_thresh or \
-                    visited[idx_best] or \
-                    (pred.name not in gts[idx_best].name):
+                if (
+                    best_dist > dist_thresh
+                    or visited[idx_best]
+                    or (pred.name not in gts[idx_best].name)
+                ):
                     continue
-                    
+
                 # Same label from here
                 label = pred.name
                 if pred.nb_parts != gts[idx_best].nb_parts:
-                    res.count_errors.append((label, pred.nb_parts, gts[idx_best].nb_parts))
+                    res.count_errors.append(
+                        (label, pred.nb_parts, gts[idx_best].nb_parts)
+                    )
                     continue
 
                 visited[idx_best] = True
@@ -508,17 +533,20 @@ class Evaluator:
         return result
 
     @staticmethod
-    def compute_csi(prediction, target, dist_thresh): 
+    def compute_csi(prediction, target, dist_thresh):
         preds_kp = dict_grouping(prediction.parts, key=lambda kp: kp.kind)
         gts_kp = dict_grouping(target.parts, key=lambda kp: kp.kind)
 
-        if prediction.name != target.name: return 0.0
+        if prediction.name != target.name:
+            return 0.0
 
         evaluation = Evaluation()
         evaluation.npos += 1
         evaluation.ndet += 1
 
-        evaluation.tp += prediction.distance(target) < dist_thresh and prediction.name == target.name
+        evaluation.tp += (
+            prediction.distance(target) < dist_thresh and prediction.name == target.name
+        )
 
         for kp_label in gts_kp.keys() | preds_kp.keys():
             preds_kp_label = preds_kp.get(kp_label, [])
@@ -527,9 +555,9 @@ class Evaluator:
             evaluation.npos += len(gts_kp_label)
             evaluation.ndet += len(preds_kp_label)
 
-            preds_kp_label = sorted(preds_kp_label,
-                key=lambda kp: kp.score,
-                reverse=True)
+            preds_kp_label = sorted(
+                preds_kp_label, key=lambda kp: kp.score, reverse=True
+            )
             visited_kp = np.repeat(False, len(gts_kp_label))
 
             for pred_kp in preds_kp_label:
@@ -551,12 +579,17 @@ class Evaluator:
 
     def pretty_print(self):
         results = {
-            "Anchor Location": self.anchor_eval, "Part Location": self.part_eval, 
-            "All Kps Location": self.kps_eval, "CSI": self.csi_eval, 
-            "Classification": self.classification_eval}
+            "Anchor Location": self.anchor_eval,
+            "Part Location": self.part_eval,
+            "All Kps Location": self.kps_eval,
+            "CSI": self.csi_eval,
+            "Classification": self.classification_eval,
+        }
 
         for title, evals in results.items():
-            table = Table(Column("Label", style="bold"), *Evaluation.columns(), title=title)
+            table = Table(
+                Column("Label", style="bold"), *Evaluation.columns(), title=title
+            )
 
             for label, evaluation in evals.items():
                 table.add_row(label, *evaluation.stats())
@@ -564,7 +597,7 @@ class Evaluator:
             if len(evals) > 1:
                 total_eval = evals.reduce()
                 table.add_row("Total", *total_eval.stats(), style="bold")
-            
+
             rprint(table)
 
     def _csv_kps_str(self) -> str:
@@ -573,7 +606,17 @@ class Evaluator:
         labels = sorted(evals.labels)
         for label in labels:
             eval = evals[label]
-            content.append(",".join((label, str(eval.recall), str(eval.precision), str(eval.f1_score), str(eval.avg_acc))))
+            content.append(
+                ",".join(
+                    (
+                        label,
+                        str(eval.recall),
+                        str(eval.precision),
+                        str(eval.f1_score),
+                        str(eval.avg_acc),
+                    )
+                )
+            )
         return "\n".join(content)
 
     def save_kps_csv(self, path: Path):
@@ -581,9 +624,12 @@ class Evaluator:
 
     def __repr__(self):
         results = {
-            "Anchor Location": self.anchor_eval, "Part Location": self.part_eval,
-            "All Kps Location": self.kps_eval, "CSI": self.csi_eval, 
-            "Classification": self.classification_eval}
+            "Anchor Location": self.anchor_eval,
+            "Part Location": self.part_eval,
+            "All Kps Location": self.kps_eval,
+            "CSI": self.csi_eval,
+            "Classification": self.classification_eval,
+        }
 
         description = ""
         for (metric_name, evaluations) in results.items():

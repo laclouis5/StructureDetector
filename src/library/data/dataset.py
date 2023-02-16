@@ -7,7 +7,6 @@ from collections import defaultdict
 
 
 class CropDataset(data.Dataset):
-
     def __init__(self, args, directories, transforms=None):
         super().__init__()
         self.args = args
@@ -20,11 +19,15 @@ class CropDataset(data.Dataset):
         if isinstance(directories, (str, Path)):
             self.files = files_with_extension(directories, ".json")
         elif isinstance(directories, list):
-            self.files = [file
+            self.files = [
+                file
                 for directory in directories
-                for file in files_with_extension(directory, ".json")]
+                for file in files_with_extension(directory, ".json")
+            ]
         else:
-            raise ValueError("'directories' should be either a unique directory or a list of directories.")
+            raise ValueError(
+                "'directories' should be either a unique directory or a list of directories."
+            )
 
         self.files = sorted(self.files)
 
@@ -51,16 +54,32 @@ class CropDataset(data.Dataset):
     def collate_fn(elements):
         return {
             "image": torch.stack([element["image"] for element in elements], dim=0),
-            "anchor_hm": torch.stack([element["anchor_hm"] for element in elements], dim=0),
+            "anchor_hm": torch.stack(
+                [element["anchor_hm"] for element in elements], dim=0
+            ),
             "part_hm": torch.stack([element["part_hm"] for element in elements], dim=0),
-            "anchor_offsets": torch.stack([element["anchor_offsets"] for element in elements], dim=0),
-            "part_offsets": torch.stack([element["part_offsets"] for element in elements], dim=0),
-            "embeddings": torch.stack([element["embeddings"] for element in elements], dim=0),
-            "anchor_inds": torch.stack([element["anchor_inds"] for element in elements], dim=0),
-            "part_inds": torch.stack([element["part_inds"] for element in elements], dim=0),
-            "anchor_mask": torch.stack([element["anchor_mask"] for element in elements], dim=0),
-            "part_mask": torch.stack([element["part_mask"] for element in elements], dim=0),
-            "annotation": [element["annotation"] for element in elements]
+            "anchor_offsets": torch.stack(
+                [element["anchor_offsets"] for element in elements], dim=0
+            ),
+            "part_offsets": torch.stack(
+                [element["part_offsets"] for element in elements], dim=0
+            ),
+            "embeddings": torch.stack(
+                [element["embeddings"] for element in elements], dim=0
+            ),
+            "anchor_inds": torch.stack(
+                [element["anchor_inds"] for element in elements], dim=0
+            ),
+            "part_inds": torch.stack(
+                [element["part_inds"] for element in elements], dim=0
+            ),
+            "anchor_mask": torch.stack(
+                [element["anchor_mask"] for element in elements], dim=0
+            ),
+            "part_mask": torch.stack(
+                [element["part_mask"] for element in elements], dim=0
+            ),
+            "annotation": [element["annotation"] for element in elements],
         }
 
     def __repr__(self):
@@ -84,26 +103,33 @@ class CropDataset(data.Dataset):
             annotation = ImageAnnotation.from_json(file, self.args.anchor_name)
             for obj in annotation.objects:
                 data.append({"label": obj.name, "leaves": obj.nb_parts})
-        
+
         df = pd.DataFrame(data)
         mf = df[df.label == "maize"]
         bf = df[df.label == "bean"]
 
-        maize_chart = alt.Chart(mf, width=600, height=400).mark_rect().encode(
-            alt.X("leaves:O", title="Nombre de feuilles"),
-            alt.Y("count()", title="Nombre de plantes"),
+        maize_chart = (
+            alt.Chart(mf, width=600, height=400)
+            .mark_rect()
+            .encode(
+                alt.X("leaves:O", title="Nombre de feuilles"),
+                alt.Y("count()", title="Nombre de plantes"),
+            )
         )
 
-        bean_chart = alt.Chart(bf, width=600, height=400).mark_rect().encode(
-            alt.X("leaves:O", title="Nombre de feuilles"),
-            alt.Y("count()", title="Nombre de plantes"),
+        bean_chart = (
+            alt.Chart(bf, width=600, height=400)
+            .mark_rect()
+            .encode(
+                alt.X("leaves:O", title="Nombre de feuilles"),
+                alt.Y("count()", title="Nombre de plantes"),
+            )
         )
 
         (maize_chart | bean_chart).show()
 
 
 class PredictionDataset(data.Dataset):
-
     def __init__(self, directory, transform=None):
         self.images = sorted(files_with_extension(directory, ".jpg"))
         self.transform = transform
@@ -123,7 +149,6 @@ class PredictionDataset(data.Dataset):
 
 
 class LabelStats:
-
     def __init__(self):
         self.count = 0
         self.parts = defaultdict(int)
@@ -143,13 +168,12 @@ class LabelStats:
             parts += f"'{name}': {count}"
         parts += "}"
 
-        description =  f"  count: {self.count}\n"
+        description = f"  count: {self.count}\n"
         description += f"  part count: {parts}\n"
         return description
 
 
 class DatasetStats:
-
     def __init__(self):
         self.stats = defaultdict(LabelStats)
 
