@@ -84,8 +84,7 @@ class Decoder:
             -1, self.max_objects, -1, -1
         )  # (B, K, P, 2)
 
-        sq_embs = (origins - anchor_pos) ** 2
-        sq_distance = torch.sqrt(sq_embs.sum(dim=-1))
+        sq_distance = hypot(origins - anchor_pos, dim=-1)
         (min_vals, min_inds) = sq_distance.min(dim=1)  # (B, P)
         min_vals = min_vals < (dist_thresh * min(out_w, out_h))  # (B, P)
 

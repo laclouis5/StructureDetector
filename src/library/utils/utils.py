@@ -418,6 +418,24 @@ def gaussian_2d(X, Y, mu1, mu2, sigma):
     return torch.exp((-((X - mu1) ** 2) - (Y - mu2) ** 2) / (2 * sigma**2))
 
 
+def hypot(
+    input: torch.Tensor, dim: int = -1, *, output: torch.Tensor | None = None
+) -> torch.Tensor:
+    assert (
+        input.size(dim) == 2
+    ), f"the size of dimension {dim} ({input.size(dim)}) should be 2"
+
+    shape = list(input.shape)
+    shape.pop(dim)
+    output = torch.empty(shape, device=input.device)
+
+    squared = torch.square(input)
+    torch.sum(squared, dim=dim, out=output)
+    torch.sqrt(output, out=output)
+
+    return output
+
+
 # heatmaps: (B, C, H, W)
 def nms(heatmaps: torch.Tensor):
     max_values = nn.functional.max_pool2d(heatmaps, kernel_size=5, stride=1, padding=2)
