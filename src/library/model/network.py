@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+
 from torchvision.models import mobilenet_v3_small, MobileNet_V3_Small_Weights
 from torchvision.models import mobilenet_v3_large, MobileNet_V3_Large_Weights
 
@@ -39,59 +40,32 @@ class Network(nn.Module):
         self.out_channels = self.label_count + self.part_count + 4  # M+N+4
         self.fpn_depth = args.fpn_depth
 
-        # mobilenet = mobilenet_v3_small(
-        #     weights=MobileNet_V3_Small_Weights.DEFAULT if pretrained else None
-        # ).features
-
-        mobilenet = mobilenet_v3_large(
+        backbone = mobilenet_v3_large(
             weights=MobileNet_V3_Large_Weights.DEFAULT if pretrained else None
         ).features
 
-        # a1, a2, l11, l12, l21, l22, l23, l24, l25, l31, l32, l33, l34 = mobilenet
-        (
-            a1,
-            a2,
-            a3,
-            a4,
-            l11,
-            l12,
-            l13,
-            l21,
-            l22,
-            l23,
-            l24,
-            l25,
-            l26,
-            l31,
-            l32,
-            l33,
-            l34,
-        ) = mobilenet
+        self.down1 = nn.Sequential(*backbone[:4])  # /4 -> /4
+        self.down2 = nn.Sequential(*backbone[4:7])  # /2 -> /8
+        self.down3 = nn.Sequential(*backbone[7:13])  # /2 -> /16
+        self.down4 = nn.Sequential(*backbone[13:17])  # /2 -> /32
 
-        self.adpater = nn.Sequential(a1, a2, a3, a4)  # /4 -> /4
-
-        self.down1 = nn.Sequential(l11, l12, l13)  # /2 -> /8
-        self.down2 = nn.Sequential(l21, l22, l23, l24, l25, l26)  # /2 -> /16
-        self.down3 = nn.Sequential(l31, l32, l33, l34)  # /2 -> /32
-
-        self.up1 = nn.Conv2d(960, self.fpn_depth, kernel_size=1)  # x1 -> /32
-        self.up2 = Fpn(112, self.fpn_depth)  # x2 -> /16
-        self.up3 = Fpn(40, self.fpn_depth)  # x2 -> /8
-        self.up4 = Fpn(24, self.fpn_depth)  # x2 -> /4
+        self.up4 = nn.Conv2d(960, self.fpn_depth, kernel_size=1)  # x1 -> /32
+        self.up3 = Fpn(112, self.fpn_depth)  # x2 -> /16
+        self.up2 = Fpn(40, self.fpn_depth)  # x2 -> /8
+        self.up1 = Fpn(24, self.fpn_depth)  # x2 -> /4
 
         self.head = Head(self.fpn_depth, self.out_channels)
 
     def forward(self, x):  # (B, 3, H, W)
-        p1 = self.adpater(x)  # (B, 16, H/4, W/4)
+        p1 = self.down1(x)  # (B, 16, H/4, W/4)
+        p2 = self.down2(p1)  # (B, 24, H/8, W/8)
+        p3 = self.down3(p2)  # (B, 48, H/16, W/16)
+        p4 = self.down4(p3)  # (B, 576, H/32, W/32)
 
-        p2 = self.down1(p1)  # (B, 24, H/8, W/8)
-        p3 = self.down2(p2)  # (B, 48, H/16, W/16)
-        p4 = self.down3(p3)  # (B, 576, H/32, W/32)
-
-        f4 = self.up1(p4)  # (B, 128, H/32, W/32)
-        f3 = self.up2(f4, p3)  # (B, 128, H/16, W/16)
-        f2 = self.up3(f3, p2)  # (B, 128, H/8, W/8)
-        f1 = self.up4(f2, p1)  # (B, 128, H/4, W/4)
+        f4 = self.up4(p4)  # (B, 128, H/32, W/32)
+        f3 = self.up3(f4, p3)  # (B, 128, H/16, W/16)
+        f2 = self.up2(f3, p2)  # (B, 128, H/8, W/8)
+        f1 = self.up1(f2, p1)  # (B, 128, H/4, W/4)
 
         out = self.head(f1)  # (B, M+N+4, H/4, W/4)
 
