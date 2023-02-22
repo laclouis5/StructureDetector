@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 from torchvision.models import mobilenet_v3_small, MobileNet_V3_Small_Weights
+from torchvision.models import mobilenet_v3_large, MobileNet_V3_Large_Weights
 
 
 class Fpn(nn.Module):
@@ -38,22 +39,45 @@ class Network(nn.Module):
         self.out_channels = self.label_count + self.part_count + 4  # M+N+4
         self.fpn_depth = args.fpn_depth
 
-        mobilenet = mobilenet_v3_small(
-            weights=MobileNet_V3_Small_Weights.DEFAULT if pretrained else None
+        # mobilenet = mobilenet_v3_small(
+        #     weights=MobileNet_V3_Small_Weights.DEFAULT if pretrained else None
+        # ).features
+
+        mobilenet = mobilenet_v3_large(
+            weights=MobileNet_V3_Large_Weights.DEFAULT if pretrained else None
         ).features
 
-        a1, a2, l11, l12, l21, l22, l23, l24, l25, l31, l32, l33, l34 = mobilenet
+        # a1, a2, l11, l12, l21, l22, l23, l24, l25, l31, l32, l33, l34 = mobilenet
+        (
+            a1,
+            a2,
+            a3,
+            a4,
+            l11,
+            l12,
+            l13,
+            l21,
+            l22,
+            l23,
+            l24,
+            l25,
+            l26,
+            l31,
+            l32,
+            l33,
+            l34,
+        ) = mobilenet
 
-        self.adpater = nn.Sequential(a1, a2)  # /4 -> /4
+        self.adpater = nn.Sequential(a1, a2, a3, a4)  # /4 -> /4
 
-        self.down1 = nn.Sequential(l11, l12)  # /2 -> /8
-        self.down2 = nn.Sequential(l21, l22, l23, l24, l25)  # /2 -> /16
+        self.down1 = nn.Sequential(l11, l12, l13)  # /2 -> /8
+        self.down2 = nn.Sequential(l21, l22, l23, l24, l25, l26)  # /2 -> /16
         self.down3 = nn.Sequential(l31, l32, l33, l34)  # /2 -> /32
 
-        self.up1 = nn.Conv2d(576, self.fpn_depth, kernel_size=1)  # x1 -> /32
-        self.up2 = Fpn(48, self.fpn_depth)  # x2 -> /16
-        self.up3 = Fpn(24, self.fpn_depth)  # x2 -> /8
-        self.up4 = Fpn(16, self.fpn_depth)  # x2 -> /4
+        self.up1 = nn.Conv2d(960, self.fpn_depth, kernel_size=1)  # x1 -> /32
+        self.up2 = Fpn(112, self.fpn_depth)  # x2 -> /16
+        self.up3 = Fpn(40, self.fpn_depth)  # x2 -> /8
+        self.up4 = Fpn(24, self.fpn_depth)  # x2 -> /4
 
         self.head = Head(self.fpn_depth, self.out_channels)
 
