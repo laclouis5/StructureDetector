@@ -100,8 +100,10 @@ class Trainer:
                     batch[k] = v.to(self.args.device)
 
             self.optimizer.zero_grad()
+
             output = self.net(batch["image"])
             loss = self.loss(output, batch)
+
             loss.backward()
             self.optimizer.step()
 
@@ -116,6 +118,7 @@ class Trainer:
         self.scheduler.step()
         self.train_set.transform.trigger_random_resize()
 
+    @torch.no_grad()
     def valid(self):
         self.net.eval()
         self.evaluator.reset()
@@ -128,8 +131,7 @@ class Trainer:
                 if isinstance(v, torch.Tensor):
                     batch[k] = v.to(self.args.device)
 
-            with torch.no_grad():
-                output = self.net(batch["image"])
+            output = self.net(batch["image"])
 
             data = self.decoder(output, return_metadata=True)
             prediction = data["annotation"][0]
