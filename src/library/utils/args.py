@@ -243,6 +243,7 @@ class Arguments:
         args.num_workers = min(cpu_count(), 4)
 
         if args.use_cuda:
+            torch.backends.cuda.matmul.allow_tf32 = True
             torch.backends.cudnn.benchmark = True
 
         set_seed(926354916)
