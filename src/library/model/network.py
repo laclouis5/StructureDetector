@@ -38,11 +38,11 @@ class Network(nn.Module):
         self.out_channels = self.label_count + self.part_count + 4  # M+N+4
         self.fpn_depth = args.fpn_depth
 
-        resnet = mobilenet_v3_small(
+        mobilenet = mobilenet_v3_small(
             weights=MobileNet_V3_Small_Weights.DEFAULT if pretrained else None
         ).features
 
-        a1, a2, l11, l12, l21, l22, l23, l24, l25, l31, l32, l33, l34 = resnet
+        a1, a2, l11, l12, l21, l22, l23, l24, l25, l31, l32, l33, l34 = mobilenet
 
         self.adpater = nn.Sequential(a1, a2)  # /4 -> /4
 
