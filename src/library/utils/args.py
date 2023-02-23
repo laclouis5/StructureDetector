@@ -44,17 +44,11 @@ class Arguments:
             help="Number of input channels, 3 if color image, 1 is grayscale. You may need to adapt the image opening and visualization code.",
         )
         parser.add_argument(
-            "--fpn_depth",
-            type=int,
-            default=128,
-            help="Depth of FPN layers of the decoder.",
-        )
-        parser.add_argument(
             "--load_model",
             "-o",
             default=None,
             dest="pretrained_model",
-            help="Load a previously trained model for evaluation of inference.",
+            help="Load a previously trained model for evaluation or inference.",
         )
         parser.add_argument(
             "--batch_size", "-b", default=8, type=int, help="Batch size for training."
@@ -135,7 +129,6 @@ class Arguments:
             default=10 / 100,
             help="Size of the gaussian filter used to lay keypoints on heatmaps. Expressed in percent of the image side length.",
         )
-
         parser.add_argument(
             "--conf_threshold",
             "-t",
@@ -177,7 +170,6 @@ class Arguments:
             args.height % 32 == 0 and args.height > 0
         ), "Height should be divisble by 32 and greater than 0"
         assert args.in_channels > 0, "'in_channels' should be greater than 0"
-        assert args.fpn_depth > 0, "'fpn_depth' should be greater than 0"
         assert args.batch_size > 0, "'batch_size' should be greater than 0"
         assert args.epochs > 0, "'epochs' should be greater than 0"
         assert args.learning_rate > 0, "'learning_rate' should be greater than 0"
