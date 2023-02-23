@@ -1,15 +1,15 @@
 # Object Structure Detector
+
 Structure Detector network (SDNet) is a pose estimation network which can detect an arbitrary number of keypoints. It is based on center point detectors such as [CenterNet](https://github.com/xingyizhou/CenterNet).
 
-SDNet is a BMVC 2021 published work : https://www.bmvc2021-virtualconference.com/conference/papers/paper_1278.html.
+SDNet is a BMVC 2021 published work : <https://www.bmvc2021-virtualconference.com/conference/papers/paper_1278.html>.
 
 ![illustration](illustration.png)
 
-# Installation
-Requirements:
-- Nvidia GPU with CUDA/CUDNN installed (recommended)
+## Installation
 
 We recommend using a conda environment:
+
 ```shell
 git clone https://github.com/louislac/StructureDetector
 cd StructureDetector
@@ -17,7 +17,13 @@ conda env create
 conda activate sdnet
 ```
 
-# Reproduce Our Results
+Supported accelerators:
+
+* NVIDIA GPUs (CUDA)
+* Apple Silicon GPUs (MPS) (experimental)
+
+## Reproduce Our Results
+
 Download and put the validation dataset in `database/valid/` at the root directory of the repo, then execute this command:
 
 ```shell
@@ -28,8 +34,10 @@ This should reproduce the results of our paper up to some small error margin dep
 
 The dataset is currently in the process of being published. It can be accessed [here](https://data.mendeley.com/datasets/d7kbzjr83k/1). The trained network `best_model_classif.pth` is available on demand (see the contact address at the bottom).
 
-# Train Your Own Model
-## Annotation
+## Train Your Own Model
+
+### Annotation
+
 Each image should have its corresponding annotation in the same folder, with the same name. The annotation is store in JSON format with the following structure:
 
 ```json
@@ -76,23 +84,28 @@ You should also update the `label.json` file with the names of your labels and p
 
 For annotating crops you can use [this repo](https://github.com/laclouis5/StructureAnnotator) or adapt it to your needs.
 
-## Training
+### Training
+
 Split your dataset into two folders: one for training and the other for validation. Optionally launch TensorBoard to monitor training (use a secondary shell):
+
 ```shell
 tensorboard --logdir runs
 ```
 
 Launch training with:
+
 ```shell
 python sources/train.py --train_dir train_dir/ --valid_dir valid_dir/
 ```
 
 Customize training (epochs, learning rate, ...) by specifying options in the command line arguments. Help is available:
+
 ```shell
 python sources/train.py -h
 ```
 
 Best networks are saved in a `trainings/` directory created at the root directory.
 
-# Contact
+## Contact
+
 Feel free to ask you questions or request data at louis.lac@ims-bordeaux.fr.
