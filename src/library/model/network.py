@@ -1,22 +1,62 @@
 import torch
 import torch.nn as nn
-from torchvision.models import resnet34, ResNet34_Weights
+import torch.nn.functional as F
 
 
-class Fpn(nn.Module):
-    def __init__(self, in_channels, out_channels):
+class DoubleConv(nn.Module):
+    def __init__(self, in_ch: int, out_ch: int) -> None:
         super().__init__()
 
-        self.up = nn.Upsample(scale_factor=2)
-        self.lateral = nn.Conv2d(in_channels, out_channels, kernel_size=1)
         self.conv = nn.Sequential(
-            nn.Conv2d(out_channels, out_channels, kernel_size=3, padding=1, bias=False),
-            nn.BatchNorm2d(out_channels),
+            nn.Conv2d(in_ch, out_ch, 3, padding=1),
+            nn.BatchNorm2d(out_ch),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(out_ch, out_ch, 3, padding=1),
+            nn.BatchNorm2d(out_ch),
             nn.ReLU(inplace=True),
         )
 
-    def forward(self, input, shortcut):
-        return self.conv(self.up(input) + self.lateral(shortcut))
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        return self.conv(x)
+
+
+class DownLayer(nn.Module):
+    def __init__(self, in_ch: int, out_ch: int) -> None:
+        super().__init__()
+
+        self.pool = nn.MaxPool2d(2, stride=2, padding=0)
+        self.conv = DoubleConv(in_ch, out_ch)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        return self.conv(self.pool(x))
+
+
+class UpLayer(nn.Module):
+    def __init__(self, in_ch: int, out_ch: int) -> None:
+        super().__init__()
+
+        self.upscale = nn.ConvTranspose2d(in_ch, out_ch, kernel_size=2, stride=2)
+        self.conv = DoubleConv(in_ch, out_ch)
+
+    def forward(self, x1: torch.Tensor, x2: torch.Tensor) -> torch.Tensor:
+        x2 = self.upscale(x2)
+
+        diff_y = x1.size()[2] - x2.size()[2]
+        diff_x = x1.size()[3] - x2.size()[3]
+
+        x2 = F.pad(
+            x2,
+            [
+                diff_x // 2,
+                diff_x - diff_y // 2,
+                diff_y // 2,
+                diff_y - diff_x // 2,
+            ],
+        )
+
+        x = torch.cat([x2, x1], dim=1)
+
+        return self.conv(x)
 
 
 class Head(nn.Module):
@@ -36,38 +76,33 @@ class Network(nn.Module):
         self.label_count = len(args.labels)  # M
         self.part_count = len(args.parts)  # N
         self.out_channels = self.label_count + self.part_count + 4  # M+N+4
-        self.fpn_depth = args.fpn_depth
 
-        resnet = resnet34(weights=ResNet34_Weights.DEFAULT if pretrained else None)
+        self.conv1 = DoubleConv(3, 64)
 
-        self.adpater = nn.Sequential(
-            resnet.conv1, resnet.bn1, resnet.relu, resnet.maxpool
-        )  # /4 -> /4
+        self.down1 = DownLayer(64, 128)
+        self.down2 = DownLayer(128, 256)
+        self.down3 = DownLayer(256, 512)
+        self.down4 = DownLayer(512, 1024)
 
-        self.down1 = resnet.layer1  # /1 -> /4
-        self.down2 = resnet.layer2  # /2 -> /8
-        self.down3 = resnet.layer3  # /2 -> /16
-        self.down4 = resnet.layer4  # /2 -> /32
+        self.up1 = UpLayer(1024, 512)
+        self.up2 = UpLayer(512, 256)
+        self.up3 = UpLayer(256, 128)
+        self.up4 = UpLayer(128, 64)
 
-        self.up1 = nn.Conv2d(512, self.fpn_depth, kernel_size=1)  # x1 -> /32
-        self.up2 = Fpn(256, self.fpn_depth)  # x2 -> /16
-        self.up3 = Fpn(128, self.fpn_depth)  # x2 -> /8
-        self.up4 = Fpn(64, self.fpn_depth)  # x2 -> /4
-
-        self.head = Head(self.fpn_depth, self.out_channels)
+        self.head = Head(64, self.out_channels)
 
     def forward(self, x):  # (B, 3, H, W)
-        p1 = self.adpater(x)  # (B, 64, H/4, W/4)
+        p1 = self.conv1(x)  # (B, 64, H/4, W/4)
 
         p2 = self.down1(p1)  # (B, 64, H/4, W/4)
         p3 = self.down2(p2)  # (B, 128, H/8, W/8)
         p4 = self.down3(p3)  # (B, 256, H/16, W/16)
         p5 = self.down4(p4)  # (B, 512, H/32, W/32)
 
-        f4 = self.up1(p5)  # (B, 128, H/32, W/32)
-        f3 = self.up2(f4, p4)  # (B, 128, H/16, W/16)
-        f2 = self.up3(f3, p3)  # (B, 128, H/8, W/8)
-        f1 = self.up4(f2, p2)  # (B, 128, H/4, W/4)
+        f4 = self.up1(p4, p5)  # (B, 128, H/32, W/32)
+        f3 = self.up2(p3, f4)  # (B, 128, H/16, W/16)
+        f2 = self.up3(p2, f3)  # (B, 128, H/8, W/8)
+        f1 = self.up4(p1, f2)  # (B, 128, H/4, W/4)
 
         out = self.head(f1)  # (B, M+N+4, H/4, W/4)
 
