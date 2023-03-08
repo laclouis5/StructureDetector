@@ -70,7 +70,7 @@ class Head(nn.Module):
 
 
 class Network(nn.Module):
-    def __init__(self, args, pretrained=True):
+    def __init__(self, args):
         super().__init__()
 
         self.label_count = len(args.labels)  # M

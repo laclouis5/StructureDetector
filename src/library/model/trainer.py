@@ -16,7 +16,7 @@ from pathlib import Path
 class Trainer:
     def __init__(self, args):
         self.args = args
-        self.net = Network(args, pretrained=True)
+        self.net = Network(args)
         self.loss = Loss(args)
         self.decoder = Decoder(args)
         self.evaluator = Evaluator(args)
@@ -28,12 +28,6 @@ class Trainer:
         self.best_csi = 0.0
         self.best_classif = 0.0
         self.best_kp_reg = 0.0
-
-        # TODO: Test this.
-        if args.pretrained_model:
-            self.net.load_state_dict(
-                torch.load(args.pretrained_model, map_location=args.device)
-            )
 
         if torch.cuda.device_count() > 1:
             self.net = nn.DataParallel(self.net)
