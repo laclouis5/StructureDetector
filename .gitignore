@@ -7,6 +7,8 @@ runs/
 *.npy
 tmp/
 *grid_search*
+*.mlpackage
+*.mlmodel
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
