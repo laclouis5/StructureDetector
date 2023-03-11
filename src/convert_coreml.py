@@ -96,12 +96,12 @@ def main():
     model_traced = torch.jit.trace(model, input)
 
     # ImageNet normalization
-    scale = 1 / (0.226 * 255.0)
-    bias = [-0.485 / (0.229), -0.456 / (0.224), -0.406 / (0.225)]
+    # scale = 1 / (0.226 * 255.0)
+    # bias = [-0.485 / (0.229), -0.456 / (0.224), -0.406 / (0.225)]
 
     mlmodel: ct.models.MLModel = ct.convert(
         model_traced,
-        inputs=[ct.ImageType(name="image", shape=input.shape, scale=scale, bias=bias)],
+        inputs=[ct.TensorType(name="image", shape=input.shape)],
         outputs=[ct.TensorType(name="output")],
     )
 
