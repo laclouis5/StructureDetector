@@ -64,6 +64,14 @@ def parse_args():
         help="Depth of FPN layers of the decoder.",
     )
 
+    parser.add_argument(
+        "--quantize",
+        "-q",
+        type=str,
+        default=None,
+        help="Quantize the model to UInt8.",
+    )
+
     args = parser.parse_args()
 
     labels_file = Path(args.params).expanduser().resolve()
@@ -96,12 +104,13 @@ def main():
     model_traced = torch.jit.trace(model, input)
 
     # ImageNet normalization
-    # scale = 1 / (0.226 * 255.0)
-    # bias = [-0.485 / (0.229), -0.456 / (0.224), -0.406 / (0.225)]
+    scale = 1 / (0.226 * 255.0)
+    bias = [-0.485 / (0.229), -0.456 / (0.224), -0.406 / (0.225)]
 
     mlmodel: ct.models.MLModel = ct.convert(
         model_traced,
-        inputs=[ct.TensorType(name="image", shape=input.shape)],
+        # inputs=[ct.TensorType(name="image", shape=input.shape)],
+        inputs=[ct.ImageType(name="image", shape=input.shape, scale=scale, bias=bias)],
         outputs=[ct.TensorType(name="output")],
     )
 
@@ -119,6 +128,15 @@ def main():
     }
 
     mlmodel.user_defined_metadata["params"] = json.dumps(params)
+
+    if args.quantize is not None:
+        path = str(Path(args.quantize).expanduser().resolve())
+
+        mlmodel = ct.models.neural_network.quantization_utils.quantize_weights(
+            mlmodel,
+            nbits=8,
+            sample_data=path,
+        )
 
     mlmodel.save(args.output)
 
