@@ -30,9 +30,9 @@ class Head(nn.Module):
 
 
 class Network(nn.Module):
-    def __init__(self, args, pretrained=True):
+    def __init__(self, args, pretrained=True, raw_output: bool = False):
         super().__init__()
-
+        self.raw_output = raw_output
         self.label_count = len(args.labels)  # M
         self.part_count = len(args.parts)  # N
         self.out_channels = self.label_count + self.part_count + 4  # M+N+4
@@ -70,6 +70,9 @@ class Network(nn.Module):
         f1 = self.up4(f2, p2)  # (B, 128, H/4, W/4)
 
         out = self.head(f1)  # (B, M+N+4, H/4, W/4)
+
+        if self.raw_output:
+            return out
 
         nb_hm = self.label_count + self.part_count  # M+N
 
