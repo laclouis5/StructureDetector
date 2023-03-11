@@ -101,6 +101,7 @@ def main():
 
     mlmodel: ct.models.MLModel = ct.convert(
         model_traced,
+        convert_to="mlprogram",
         # inputs=[ct.TensorType(name="image", shape=input.shape)],
         inputs=[ct.ImageType(name="image", shape=input.shape, scale=scale, bias=bias)],
         outputs=[ct.TensorType(name="output")],
