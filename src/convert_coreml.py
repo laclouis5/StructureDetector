@@ -3,6 +3,7 @@ import torch
 import json
 import argparse
 from pathlib import Path
+import numpy as np
 
 from library.utils import clamped_sigmoid, nms
 from library.model import Network
@@ -104,7 +105,8 @@ def main():
         convert_to="mlprogram",
         # inputs=[ct.TensorType(name="image", shape=input.shape)],
         inputs=[ct.ImageType(name="image", shape=input.shape, scale=scale, bias=bias)],
-        outputs=[ct.TensorType(name="output")],
+        outputs=[ct.TensorType(name="output", dtype=np.float16)],
+        minimum_deployment_target=ct.target.iOS16,
     )
 
     mlmodel.author = "Louis Lac"
@@ -121,6 +123,11 @@ def main():
     }
 
     mlmodel.user_defined_metadata["params"] = json.dumps(params)
+
+    # Workaround for https://github.com/apple/coremltools/issues/1680
+    mlmodel = ct.models.MLModel(
+        mlmodel._spec, weights_dir=mlmodel._weights_dir, is_temp_package=True
+    )
 
     mlmodel.save(args.output)
 
