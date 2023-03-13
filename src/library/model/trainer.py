@@ -59,6 +59,7 @@ class Trainer:
             num_workers=args.num_workers,
             persistent_workers=True,
             drop_last=True,
+            prefetch_factor=4,
         )
 
         self.valid_set = CropDataset(
@@ -73,6 +74,7 @@ class Trainer:
             pin_memory=args.use_cuda,
             num_workers=args.num_workers,
             persistent_workers=True,
+            prefetch_factor=4,
         )
 
         # Logging

@@ -2,6 +2,7 @@ from ..utils import *
 import torchvision.transforms as torchtf
 import torchvision.transforms.functional as F
 import torch
+from PIL.Image import Image
 
 
 class RandomHorizontalFlip:
@@ -126,7 +127,13 @@ class Encode:
         self.sigma_gauss = args.sigma_gauss
 
     def __call__(self, input, target):
-        (img_h, img_w) = input.shape[-2:]
+        if isinstance(input, torch.Tensor):
+            img_h, img_w = input.shape[-2:]
+        elif isinstance(input, Image):
+            img_w, img_h = input.size
+        else:
+            raise ValueError(f"`input` type '{type(input)}' not supported")
+
         out_w, out_h = int(img_w / self.down_ratio), int(img_h / self.down_ratio)
 
         kp_idx = 0
@@ -277,3 +284,21 @@ class PredictionTransformation:
 
     def __repr__(self):
         return f"PredictionTranformation(tranforms: {self.tf})"
+
+
+class CoreMLTransforms:
+    """Transforms for CoreML model when the input is of type `ImageType`."""
+
+    def __init__(self, args):
+        self.transform = Compose(
+            [
+                Resize((args.width, args.height)),
+                Encode(args),
+            ]
+        )
+
+    def __call__(self, input, target):
+        return self.transform(input, target)
+
+    def __repr__(self):
+        return f"CoreMLTransforms(transforms: {self.transform})"

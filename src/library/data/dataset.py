@@ -82,6 +82,38 @@ class CropDataset(data.Dataset):
             "annotation": [element["annotation"] for element in elements],
         }
 
+    @staticmethod
+    def collate_fn_coreml(elements):
+        return {
+            "image": [element["image"] for element in elements],
+            "anchor_hm": torch.stack(
+                [element["anchor_hm"] for element in elements], dim=0
+            ),
+            "part_hm": torch.stack([element["part_hm"] for element in elements], dim=0),
+            "anchor_offsets": torch.stack(
+                [element["anchor_offsets"] for element in elements], dim=0
+            ),
+            "part_offsets": torch.stack(
+                [element["part_offsets"] for element in elements], dim=0
+            ),
+            "embeddings": torch.stack(
+                [element["embeddings"] for element in elements], dim=0
+            ),
+            "anchor_inds": torch.stack(
+                [element["anchor_inds"] for element in elements], dim=0
+            ),
+            "part_inds": torch.stack(
+                [element["part_inds"] for element in elements], dim=0
+            ),
+            "anchor_mask": torch.stack(
+                [element["anchor_mask"] for element in elements], dim=0
+            ),
+            "part_mask": torch.stack(
+                [element["part_mask"] for element in elements], dim=0
+            ),
+            "annotation": [element["annotation"] for element in elements],
+        }
+
     def __repr__(self):
         description = f"Images: {len(self)}\n"
         stats = DatasetStats()

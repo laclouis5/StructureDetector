@@ -3,23 +3,25 @@ import torch
 import json
 import argparse
 from pathlib import Path
-import numpy as np
 
 from library.utils import clamped_sigmoid, nms
 from library.model import Network
 
 
 class RawDecoder:
-    def __call__(self, output: torch.Tensor) -> torch.Tensor:
-        heatmaps = nms(clamped_sigmoid(output[:, :3]))
-        return torch.cat(tensors=(heatmaps, output[:, 3:]), dim=1)
+    def __init__(self, nb_hms: int) -> None:
+        self.nb_hms = nb_hms
+
+    def __call__(self, input: torch.Tensor) -> torch.Tensor:
+        heatmaps = nms(clamped_sigmoid(input[:, : self.nb_hms]))
+        return torch.cat(tensors=(heatmaps, input[:, self.nb_hms :]), dim=1)
 
 
 class CoreMLModel(torch.nn.Module):
-    def __init__(self, model: Network) -> None:
+    def __init__(self, model: Network, args) -> None:
         super().__init__()
         self.model = model
-        self.decoder = RawDecoder()
+        self.decoder = RawDecoder(nb_hms=len(args.labels) + len(args.parts))
 
     def forward(self, image: torch.Tensor) -> torch.Tensor:
         output = self.model(image)
@@ -65,6 +67,12 @@ def parse_args():
         help="Depth of FPN layers of the decoder.",
     )
 
+    parser.add_argument(
+        "--norm",
+        action="store_true",
+        help="If this option is specified, the input ImageNet normalization will be embedded in the network. The network input will be of type `ImageType`.",
+    )
+
     args = parser.parse_args()
 
     labels_file = Path(args.params).expanduser().resolve()
@@ -90,23 +98,22 @@ def main():
     model.load_state_dict(torch.load(args.model, map_location=torch.device("cpu")))
     model.eval()
 
-    model = CoreMLModel(model)
-    model.eval()
-
     input = torch.randn(1, 3, args.height, args.width)
     model_traced = torch.jit.trace(model, input)
 
-    # ImageNet normalization
-    scale = 1 / (0.226 * 255.0)
-    bias = [-0.485 / 0.229, -0.456 / 0.224, -0.406 / 0.225]
+    if args.norm:
+        # ImageNet normalization
+        scale = 1 / (0.226 * 255.0)
+        bias = [-0.485 / 0.229, -0.456 / 0.224, -0.406 / 0.225]
+        inputs = [ct.ImageType(name="input", shape=input.shape, scale=scale, bias=bias)]
+    else:
+        inputs = [ct.TensorType(name="input", shape=input.shape)]
 
     mlmodel: ct.models.MLModel = ct.convert(
         model_traced,
         convert_to="mlprogram",
-        # inputs=[ct.TensorType(name="image", shape=input.shape)],
-        inputs=[ct.ImageType(name="image", shape=input.shape, scale=scale, bias=bias)],
-        outputs=[ct.TensorType(name="output", dtype=np.float16)],
-        minimum_deployment_target=ct.target.iOS16,
+        inputs=inputs,
+        outputs=[ct.TensorType(name="output")],
     )
 
     mlmodel.author = "Louis Lac"
