@@ -106,6 +106,18 @@ python sources/train.py -h
 
 Best networks are saved in a `trainings/` directory created at the root directory.
 
+## Convert to CoreML
+
+For maximum prediction speed on Apple platforms the model can be compiled to a CoreML model:
+
+```shell
+python src/convert_coreml.py <in_model.pth> --output <out_name.mlpackage>
+```
+
+The Xcode CoreML model explorer claims a median prediction speed of 5 ms on my MacBook Pro M1 Pro using the ANE and 13 ms using the GPU. In practice, in a more realistic setting (sub-optimal though) I've been able to achieve 90 fps (11 ms) using the ANE.
+
+The performance can be benchmarked with `src/evaluate_coreml.py` and it is very close to the original network.
+
 ## Contact
 
-Feel free to ask you questions or request data at louis.lac@ims-bordeaux.fr.
+Feel free to ask you questions or request data at <lac.louis5@gmail.com>.
