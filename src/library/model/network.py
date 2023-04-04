@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+from torch import Tensor
 from torchvision.models import resnet34, ResNet34_Weights
 
 
@@ -7,6 +8,7 @@ class Fpn(nn.Module):
     def __init__(self, in_channels: int, out_channels: int):
         super().__init__()
 
+        self.attn = AttentionBlock(in_channels, out_channels, out_channels)
         self.up = nn.Upsample(scale_factor=2)
         self.lateral = nn.Conv2d(in_channels, out_channels, kernel_size=1)
         self.conv = nn.Sequential(
@@ -17,18 +19,14 @@ class Fpn(nn.Module):
             nn.BatchNorm2d(out_channels),
             nn.ReLU(inplace=True),
         )
-        self.conv_skip = nn.Sequential(
-            nn.Conv2d(out_channels, out_channels, kernel_size=3, padding=1, bias=False),
-            nn.BatchNorm2d(out_channels),
-            nn.ReLU(inplace=True),
-        )
 
     def forward(
-        self, input: torch.Tensor, shortcut: torch.Tensor
-    ) -> torch.Tensor:  # (B, F, H/2, W/2) (B, C, H, W)
+        self, input: Tensor, shortcut: Tensor
+    ) -> Tensor:  # (B, F, H/2, W/2) (B, C, H, W)
+        input = self.attn(input)  # (B, F, H, W)
         upsampled = self.up(input)  # (B, F, H, W)
         shortcut = self.lateral(shortcut)  # (B, F, H, W)
-        skipped = self.conv_skip(upsampled + shortcut)  # (B, F, H, W)
+        skipped = upsampled + shortcut  # (B, F, H, W)
         output = self.conv(skipped)  # (B, F, H, W)
         return output + skipped  # (B, F, H, W)
 
@@ -39,7 +37,7 @@ class Head(nn.Module):
 
         self.conv = nn.Conv2d(in_channels, out_channels, kernel_size=1)
 
-    def forward(self, input: torch.Tensor) -> torch.Tensor:
+    def forward(self, input: Tensor) -> Tensor:
         return self.conv(input)
 
 
@@ -55,7 +53,7 @@ class SqueezeExciteBlock(nn.Module):
             nn.Sigmoid(),
         )
 
-    def forward(self, x: torch.Tensor) -> torch.Tensor:  # (B, C, H, W)
+    def forward(self, x: Tensor) -> Tensor:  # (B, C, H, W)
         b, c = x.shape[:2]
         y = self.avg_pool(x).view(b, c)  # (B, C)
         y = self.fc(y).view(b, c, 1, 1)  # (B, C, 1, 1)
@@ -97,7 +95,7 @@ class ASPP(nn.Module):
             nn.ReLU(inplace=True),
         )
 
-    def forward(self, x: torch.Tensor) -> torch.Tensor:  # (B, C, H, W)
+    def forward(self, x: Tensor) -> Tensor:  # (B, C, H, W)
         outputs = [block(x) for block in self.aspp_blocks]  # n * (B, O, H, W)
         out = torch.cat(outputs, dim=1)  # (B, n*O, H, W)
         return self.conv(out)  # (B, O, H, W)
@@ -109,6 +107,37 @@ class ASPP(nn.Module):
             elif isinstance(m, nn.BatchNorm2d):
                 m.weight.data.fill_(1)
                 m.bias.data.zero_()
+
+
+class AttentionBlock(nn.Module):
+    def __init__(self, enc_channels: int, dec_channels: int, out_channels: int):
+        super().__init__()
+
+        self.conv_encoder = nn.Sequential(
+            nn.Conv2d(enc_channels, out_channels, 3, padding=1, bias=False),
+            nn.BatchNorm2d(enc_channels),
+            nn.ReLU(inplace=True),
+            nn.MaxPool2d(2, 2),
+        )
+
+        self.conv_decoder = nn.Sequential(
+            nn.Conv2d(dec_channels, out_channels, 3, padding=1, bias=False),
+            nn.BatchNorm2d(dec_channels),
+            nn.ReLU(inplace=True),
+        )
+
+        self.conv_attn = nn.Sequential(
+            nn.Conv2d(out_channels, 1, 1, bias=False),
+            nn.BatchNorm2d(out_channels),
+            nn.ReLU(inplace=True),
+        )
+
+    # (B, F, H, W), (B, C, H*2, W*2)
+    def forward(self, input: Tensor, shortcut: Tensor) -> Tensor:
+        enc = self.conv_encoder(shortcut)  # (B, O, H, W)
+        dec = self.conv_decoder(input)  # (B, O, H, W)
+        out = self.conv_attn(enc + dec)  # (B, 1, H, W)
+        return out * input  # (B, F, H, W)
 
 
 class Network(nn.Module):
@@ -131,10 +160,10 @@ class Network(nn.Module):
         self.down3 = resnet.layer3  # /2 -> /16
         self.down4 = resnet.layer4  # /2 -> /32
 
-        self.sqatt1 = SqueezeExciteBlock(64)
-        self.sqatt2 = SqueezeExciteBlock(64)
-        self.sqatt3 = SqueezeExciteBlock(128)
-        self.sqatt4 = SqueezeExciteBlock(256)
+        self.sqex1 = SqueezeExciteBlock(64)
+        self.sqex2 = SqueezeExciteBlock(64)
+        self.sqex3 = SqueezeExciteBlock(128)
+        self.sqex4 = SqueezeExciteBlock(256)
 
         self.up1 = ASPP(512, self.fpn_depth)  # x1 -> /32
 
@@ -144,19 +173,19 @@ class Network(nn.Module):
 
         self.head = ASPP(self.fpn_depth, self.out_channels)
 
-    def forward(self, x: torch.Tensor) -> torch.Tensor:  # (B, 3, H, W)
+    def forward(self, x: Tensor) -> Tensor:  # (B, 3, H, W)
         p1 = self.adpater(x)  # (B, 64, H/4, W/4)
 
-        p2 = self.sqatt1(p1)  # (B, 64, H/4, W/4)
+        p2 = self.sqex1(p1)  # (B, 64, H/4, W/4)
         p2 = self.down1(p2)  # (B, 64, H/4, W/4)
 
-        p3 = self.sqatt2(p2)  # (B, 128, H/8, W/8)
+        p3 = self.sqex2(p2)  # (B, 128, H/8, W/8)
         p3 = self.down2(p3)  # (B, 128, H/8, W/8)
 
-        p4 = self.sqatt3(p3)  # (B, 256, H/16, W/16)
+        p4 = self.sqex3(p3)  # (B, 256, H/16, W/16)
         p4 = self.down3(p4)  # (B, 256, H/16, W/16)
 
-        p5 = self.sqatt4(p4)  # (B, 512, H/32, W/32)
+        p5 = self.sqex4(p4)  # (B, 512, H/32, W/32)
         p5 = self.down4(p5)  # (B, 512, H/32, W/32)
 
         f4 = self.up1(p5)  # (B, 128, H/32, W/32)
