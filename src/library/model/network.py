@@ -21,6 +21,13 @@ class Fpn(nn.Module):
             nn.BatchNorm2d(out_channels),
             nn.ReLU(inplace=True),
         )
+        self.skip = nn.Sequential(
+            nn.Conv2d(
+                2 * out_channels, out_channels, kernel_size=3, padding=1, bias=False
+            ),
+            nn.BatchNorm2d(out_channels),
+            nn.ReLU(inplace=True),
+        )
 
     def forward(
         self, input: Tensor, shortcut: Tensor
@@ -30,7 +37,7 @@ class Fpn(nn.Module):
         shortcut = self.lateral(shortcut)  # (B, F, H, W)
         concat = torch.cat([upsampled, shortcut], dim=1)  # (B, 2*F, H, W)
         output = self.conv(concat)  # (B, F, H, W)
-        return output + concat  # (B, F, H, W)
+        return output + self.skip(concat)  # (B, F, H, W)
 
 
 class Head(nn.Module):
