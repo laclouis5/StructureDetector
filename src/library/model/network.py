@@ -26,9 +26,9 @@ class Fpn(nn.Module):
         input = self.attn(input, shortcut)  # (B, F, H, W)
         upsampled = self.up(input)  # (B, F, H, W)
         shortcut = self.lateral(shortcut)  # (B, F, H, W)
-        skipped = upsampled + shortcut  # (B, F, H, W)
-        output = self.conv(skipped)  # (B, F, H, W)
-        return output + skipped  # (B, F, H, W)
+        output = upsampled + shortcut  # (B, F, H, W)
+        output = self.conv(output)  # (B, F, H, W)
+        return output  # (B, F, H, W)
 
 
 class Head(nn.Module):
