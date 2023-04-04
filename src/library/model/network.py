@@ -165,7 +165,7 @@ class Network(nn.Module):
         self.sqex3 = SqueezeExciteBlock(128)
         self.sqex4 = SqueezeExciteBlock(256)
 
-        self.up1 = ASPP(512, self.fpn_depth)  # x1 -> /32
+        self.bridge = ASPP(512, self.fpn_depth)  # x1 -> /32
 
         self.up2 = Fpn(256, self.fpn_depth)  # x2 -> /16
         self.up3 = Fpn(128, self.fpn_depth)  # x2 -> /8
@@ -188,7 +188,8 @@ class Network(nn.Module):
         p5 = self.sqex4(p4)  # (B, 512, H/32, W/32)
         p5 = self.down4(p5)  # (B, 512, H/32, W/32)
 
-        f4 = self.up1(p5)  # (B, 128, H/32, W/32)
+        f4 = self.bridge(p5)  # (B, 128, H/32, W/32)
+        
         f3 = self.up2(f4, p4)  # (B, 128, H/16, W/16)
         f2 = self.up3(f3, p3)  # (B, 128, H/8, W/8)
         f1 = self.up4(f2, p2)  # (B, 128, H/4, W/4)
