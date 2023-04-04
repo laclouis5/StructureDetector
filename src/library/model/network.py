@@ -23,7 +23,7 @@ class Fpn(nn.Module):
     def forward(
         self, input: Tensor, shortcut: Tensor
     ) -> Tensor:  # (B, F, H/2, W/2) (B, C, H, W)
-        input = self.attn(input)  # (B, F, H, W)
+        input = self.attn(input, shortcut)  # (B, F, H, W)
         upsampled = self.up(input)  # (B, F, H, W)
         shortcut = self.lateral(shortcut)  # (B, F, H, W)
         skipped = upsampled + shortcut  # (B, F, H, W)
@@ -114,22 +114,22 @@ class AttentionBlock(nn.Module):
         super().__init__()
 
         self.conv_encoder = nn.Sequential(
-            nn.Conv2d(enc_channels, out_channels, 3, padding=1, bias=False),
             nn.BatchNorm2d(enc_channels),
             nn.ReLU(inplace=True),
+            nn.Conv2d(enc_channels, out_channels, 3, padding=1),
             nn.MaxPool2d(2, 2),
         )
 
         self.conv_decoder = nn.Sequential(
-            nn.Conv2d(dec_channels, out_channels, 3, padding=1, bias=False),
             nn.BatchNorm2d(dec_channels),
             nn.ReLU(inplace=True),
+            nn.Conv2d(dec_channels, out_channels, 3, padding=1),
         )
 
         self.conv_attn = nn.Sequential(
-            nn.Conv2d(out_channels, 1, 1, bias=False),
             nn.BatchNorm2d(out_channels),
             nn.ReLU(inplace=True),
+            nn.Conv2d(out_channels, 1, 1),
         )
 
     # (B, F, H, W), (B, C, H*2, W*2)
@@ -189,7 +189,7 @@ class Network(nn.Module):
         p5 = self.down4(p5)  # (B, 512, H/32, W/32)
 
         f4 = self.bridge(p5)  # (B, 128, H/32, W/32)
-        
+
         f3 = self.up2(f4, p4)  # (B, 128, H/16, W/16)
         f2 = self.up3(f3, p3)  # (B, 128, H/8, W/8)
         f1 = self.up4(f2, p2)  # (B, 128, H/4, W/4)

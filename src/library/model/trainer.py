@@ -41,7 +41,7 @@ class Trainer:
         self.net.to(args.device)
         self.loss.to(args.device)
 
-        self.optimizer = torch.optim.Adam(self.net.parameters(), args.learning_rate)
+        self.optimizer = torch.optim.AdamW(self.net.parameters(), lr=args.learning_rate)
         self.scheduler = torch.optim.lr_scheduler.StepLR(
             self.optimizer, step_size=args.lr_step
         )
