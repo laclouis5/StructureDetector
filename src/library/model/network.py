@@ -12,7 +12,9 @@ class Fpn(nn.Module):
         self.up = nn.Upsample(scale_factor=2)
         self.lateral = nn.Conv2d(in_channels, out_channels, kernel_size=1)
         self.conv = nn.Sequential(
-            nn.Conv2d(out_channels, out_channels, kernel_size=3, padding=1, bias=False),
+            nn.Conv2d(
+                2 * out_channels, out_channels, kernel_size=3, padding=1, bias=False
+            ),
             nn.BatchNorm2d(out_channels),
             nn.ReLU(inplace=True),
             nn.Conv2d(out_channels, out_channels, kernel_size=3, padding=1, bias=False),
@@ -26,9 +28,9 @@ class Fpn(nn.Module):
         input = self.attn(input, shortcut)  # (B, F, H, W)
         upsampled = self.up(input)  # (B, F, H, W)
         shortcut = self.lateral(shortcut)  # (B, F, H, W)
-        output = upsampled + shortcut  # (B, F, H, W)
-        output = self.conv(output)  # (B, F, H, W)
-        return output  # (B, F, H, W)
+        concat = torch.cat([upsampled, shortcut], dim=1)  # (B, 2*F, H, W)
+        output = self.conv(concat)  # (B, F, H, W)
+        return output + concat  # (B, F, H, W)
 
 
 class Head(nn.Module):
@@ -171,7 +173,8 @@ class Network(nn.Module):
         self.up3 = Fpn(128, self.fpn_depth)  # x2 -> /8
         self.up4 = Fpn(64, self.fpn_depth)  # x2 -> /4
 
-        self.head = ASPP(self.fpn_depth, self.out_channels)
+        self.aspp = ASPP(self.fpn_depth, self.fpn_depth)
+        self.head = Head(self.fpn_depth, self.out_channels)
 
     def forward(self, x: Tensor) -> Tensor:  # (B, 3, H, W)
         p1 = self.adpater(x)  # (B, 64, H/4, W/4)
@@ -194,7 +197,8 @@ class Network(nn.Module):
         f2 = self.up3(f3, p3)  # (B, 128, H/8, W/8)
         f1 = self.up4(f2, p2)  # (B, 128, H/4, W/4)
 
-        out = self.head(f1)  # (B, M+N+4, H/4, W/4)
+        out = self.aspp(f1)  # (B, M+N+4, H/4, W/4)
+        out = self.head(out)
 
         if self.raw_output:
             return out
