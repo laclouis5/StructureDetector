@@ -114,22 +114,22 @@ class AttentionBlock(nn.Module):
         super().__init__()
 
         self.conv_encoder = nn.Sequential(
-            nn.BatchNorm2d(enc_channels),
+            nn.Conv2d(enc_channels, out_channels, 3, padding=1, bias=False),
+            nn.BatchNorm2d(out_channels),
             nn.ReLU(inplace=True),
-            nn.Conv2d(enc_channels, out_channels, 3, padding=1),
             nn.MaxPool2d(2, 2),
         )
 
         self.conv_decoder = nn.Sequential(
-            nn.BatchNorm2d(dec_channels),
+            nn.Conv2d(dec_channels, out_channels, 3, padding=1, bias=False),
+            nn.BatchNorm2d(out_channels),
             nn.ReLU(inplace=True),
-            nn.Conv2d(dec_channels, out_channels, 3, padding=1),
         )
 
         self.conv_attn = nn.Sequential(
-            nn.BatchNorm2d(out_channels),
+            nn.Conv2d(out_channels, 1, 1, bias=False),
+            nn.BatchNorm2d(1),
             nn.ReLU(inplace=True),
-            nn.Conv2d(out_channels, 1, 1),
         )
 
     # (B, F, H, W), (B, C, H*2, W*2)
