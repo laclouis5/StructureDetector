@@ -165,6 +165,13 @@ class Arguments:
 
         parser.add_argument("--save_csv_eval", dest="csv_path", type=Path)
 
+        parser.add_argument(
+            "--amp",
+            action="store_true",
+            dest="use_amp",
+            help="Wether to use Automatic Mixed Precision or not.",
+        )
+
         self.parser = parser
 
     def parse(self):

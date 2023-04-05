@@ -29,14 +29,16 @@ class Trainer:
         self.best_classif = 0.0
         self.best_kp_reg = 0.0
 
+        # TODO: Add MPS support when will be avaiable
+        self.autocast_device, self.autocast_dtype = (
+            ("cuda", torch.float16) if args.use_cuda else ("cpu", torch.bfloat16)
+        )
+
         # TODO: Test this.
         if args.pretrained_model:
             self.net.load_state_dict(
                 torch.load(args.pretrained_model, map_location=args.device)
             )
-
-        if torch.cuda.device_count() > 1:
-            self.net = nn.DataParallel(self.net)
 
         self.net.to(args.device)
         self.loss.to(args.device)
@@ -101,9 +103,16 @@ class Trainer:
                 if isinstance(v, torch.Tensor):
                     batch[k] = v.to(self.args.device)
 
-            self.optimizer.zero_grad()
-            output = self.net(batch["image"])
-            loss = self.loss(output, batch)
+            self.optimizer.zero_grad(set_to_none=True)
+
+            with torch.autocast(
+                device_type=self.autocast_device,
+                dtype=self.autocast_dtype,
+                enabled=self.args.use_amp,
+            ):
+                output = self.net(batch["image"])
+                loss = self.loss(output, batch)
+
             loss.backward()
             self.optimizer.step()
 
@@ -123,29 +132,34 @@ class Trainer:
         self.evaluator.reset()
         loss_stats = LossStats()
 
-        for batch in tqdm(
-            self.valid_dataloader, desc="Validation", leave=False, unit="image"
+        with torch.autocast(
+            device_type=self.autocast_device,
+            dtype=self.autocast_dtype,
+            enabled=self.args.use_amp,
         ):
-            for k, v in batch.items():
-                if isinstance(v, torch.Tensor):
-                    batch[k] = v.to(self.args.device)
+            for batch in tqdm(
+                self.valid_dataloader, desc="Validation", leave=False, unit="image"
+            ):
+                for k, v in batch.items():
+                    if isinstance(v, torch.Tensor):
+                        batch[k] = v.to(self.args.device)
 
-            with torch.no_grad():
-                output = self.net(batch["image"])
+                with torch.no_grad():
+                    output = self.net(batch["image"])
 
-            data = self.decoder(output, return_metadata=True)
-            prediction = data["annotation"][0]
-            annotation = batch["annotation"][0]
-            self.evaluator.accumulate(
-                prediction,
-                annotation,
-                data["raw_parts"][0],
-                eval_csi=True,
-                eval_classif=True,
-            )
+                data = self.decoder(output, return_metadata=True)
+                prediction = data["annotation"][0]
+                annotation = batch["annotation"][0]
+                self.evaluator.accumulate(
+                    prediction,
+                    annotation,
+                    data["raw_parts"][0],
+                    eval_csi=True,
+                    eval_classif=True,
+                )
 
-            self.loss(output, batch)
-            loss_stats += self.loss.stats
+                self.loss(output, batch)
+                loss_stats += self.loss.stats
 
         loss_stats /= len(self.valid_dataloader)
 
