@@ -142,13 +142,13 @@ class Network(nn.Module):
 
         p2 = self.sqex1(p1)
         p2 = self.down1(p2)  # (B, 64, H/4, W/4)
-        
+
         p3 = self.sqex2(p2)
         p3 = self.down2(p3)  # (B, 128, H/8, W/8)
-        
+
         p4 = self.sqex3(p3)
         p4 = self.down3(p4)  # (B, 256, H/16, W/16)
-        
+
         p5 = self.sqex4(p4)
         p5 = self.down4(p5)  # (B, 512, H/32, W/32)
 
