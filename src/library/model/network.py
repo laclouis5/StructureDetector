@@ -8,23 +8,32 @@ class Fpn(nn.Module):
     def __init__(self, in_channels, out_channels):
         super().__init__()
 
-        self.up = nn.Upsample(scale_factor=2)
+        self.up = nn.Upsample(scale_factor=2, mode="bilinear")
         self.lateral = nn.Conv2d(in_channels, out_channels, kernel_size=1)
         self.conv = nn.Sequential(
+            nn.Conv2d(out_channels, out_channels, kernel_size=3, padding=1, bias=False),
+            nn.BatchNorm2d(out_channels),
+            nn.ReLU(inplace=True),
             nn.Conv2d(out_channels, out_channels, kernel_size=3, padding=1, bias=False),
             nn.BatchNorm2d(out_channels),
             nn.ReLU(inplace=True),
         )
 
     def forward(self, input, shortcut):
-        return self.conv(self.up(input) + self.lateral(shortcut))
+        sum_ = self.up(input) + self.lateral(shortcut)
+        return self.conv(sum_) + sum_
 
 
 class Head(nn.Module):
     def __init__(self, in_channels, out_channels):
         super().__init__()
 
-        self.conv = nn.Conv2d(in_channels, out_channels, kernel_size=1)
+        self.conv = nn.Sequential(
+            nn.Conv2d(in_channels, in_channels, kernel_size=3, padding=1, bias=False),
+            nn.BatchNorm2d(in_channels),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(in_channels, out_channels, kernel_size=1),
+        )
 
     def forward(self, input):
         return self.conv(input)
