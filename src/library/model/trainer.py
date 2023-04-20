@@ -4,9 +4,8 @@ from .evaluator import Evaluator
 from ..data import *
 
 import torch
-import torch.nn as nn
 import torchvision.transforms.functional as F
-import torch.utils.data as data
+from torch.utils.data.dataloader import DataLoader
 from torch.utils.tensorboard import SummaryWriter
 from tqdm import tqdm
 from datetime import datetime
@@ -52,7 +51,7 @@ class Trainer:
             args, args.train_dir, transforms=TrainAugmentation(args)
         )
         self.train_set.localize_image_names()
-        self.train_dataloader = data.DataLoader(
+        self.train_dataloader = DataLoader(
             self.train_set,
             batch_size=args.batch_size,
             collate_fn=CropDataset.collate_fn,
@@ -61,14 +60,14 @@ class Trainer:
             num_workers=args.num_workers,
             persistent_workers=True,
             drop_last=True,
-            prefetch_factor=4,
+            multiprocessing_context="forkserver",
         )
 
         self.valid_set = CropDataset(
             args, args.valid_dir, transforms=ValidationAugmentation(args)
         )
         self.valid_set.localize_image_names()
-        self.valid_dataloader = data.DataLoader(
+        self.valid_dataloader = DataLoader(
             self.valid_set,
             batch_size=1,
             collate_fn=CropDataset.collate_fn,
@@ -76,7 +75,7 @@ class Trainer:
             pin_memory=args.use_cuda,
             num_workers=args.num_workers,
             persistent_workers=True,
-            prefetch_factor=4,
+            multiprocessing_context="forkserver",
         )
 
         # Logging
@@ -99,7 +98,7 @@ class Trainer:
         for batch in tqdm(
             self.train_dataloader, desc="Epoch", leave=False, unit="batch"
         ):
-            for (k, v) in batch.items():
+            for k, v in batch.items():
                 if isinstance(v, torch.Tensor):
                     batch[k] = v.to(self.args.device)
 

@@ -1,5 +1,7 @@
 from library import *
+
 import torch
+from torch.utils.data import DataLoader
 from tqdm import tqdm
 
 
@@ -14,7 +16,7 @@ def main():
 
     evaluator = Evaluator(args)
     dataset = CropDataset(args, args.valid_dir, ValidationAugmentation(args))
-    dataloader = torch.utils.data.DataLoader(
+    dataloader = DataLoader(
         dataset,
         batch_size=1,
         collate_fn=CropDataset.collate_fn,

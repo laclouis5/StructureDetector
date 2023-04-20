@@ -1,5 +1,7 @@
 from library import *
+
 import torch
+from torch.utils.data import DataLoader
 from tqdm import tqdm
 import argparse
 import coremltools as ct
@@ -100,12 +102,11 @@ def main():
     decoder = Decoder(args)
 
     dataset = CropDataset(args, args.valid_dir, ValidationAugmentation(args))
-    dataloader = torch.utils.data.DataLoader(
+    dataloader = DataLoader(
         dataset,
         batch_size=1,
         collate_fn=CropDataset.collate_fn,
         num_workers=args.num_workers,
-        prefetch_factor=4,
         multiprocessing_context="fork",
     )
 
