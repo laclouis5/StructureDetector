@@ -132,9 +132,7 @@ def main():
     mlmodel.user_defined_metadata["params"] = json.dumps(params)
 
     # Workaround for https://github.com/apple/coremltools/issues/1680
-    mlmodel = ct.models.MLModel(
-        mlmodel._spec, weights_dir=mlmodel._weights_dir, is_temp_package=True
-    )
+    mlmodel = ct.models.MLModel(mlmodel._spec, weights_dir=mlmodel._weights_dir)
 
     mlmodel.save(args.output)
 
