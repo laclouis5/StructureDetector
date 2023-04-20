@@ -4,7 +4,6 @@ from torchvision.models import resnet34, ResNet34_Weights
 
 
 class Fpn(nn.Module):
-
     def __init__(self, in_channels, out_channels):
         super().__init__()
 
@@ -13,14 +12,14 @@ class Fpn(nn.Module):
         self.conv = nn.Sequential(
             nn.Conv2d(out_channels, out_channels, kernel_size=3, padding=1, bias=False),
             nn.BatchNorm2d(out_channels),
-            nn.ReLU(inplace=True))
+            nn.ReLU(inplace=True),
+        )
 
     def forward(self, input, shortcut):
         return self.conv(self.up(input) + self.lateral(shortcut))
 
 
 class Head(nn.Module):
-
     def __init__(self, in_channels, out_channels):
         super().__init__()
 
@@ -31,10 +30,9 @@ class Head(nn.Module):
 
 
 class Network(nn.Module):
-    
-    def __init__(self, args, pretrained=True):
+    def __init__(self, args, pretrained=True, raw_output: bool = False):
         super().__init__()
-
+        self.raw_output = raw_output
         self.label_count = len(args.labels)  # M
         self.part_count = len(args.parts)  # N
         self.out_channels = self.label_count + self.part_count + 4  # M+N+4
@@ -42,7 +40,9 @@ class Network(nn.Module):
 
         resnet = resnet34(weights=ResNet34_Weights.DEFAULT if pretrained else None)
 
-        self.adpater = nn.Sequential(resnet.conv1, resnet.bn1, resnet.relu, resnet.maxpool)  # /4 -> /4
+        self.adpater = nn.Sequential(
+            resnet.conv1, resnet.bn1, resnet.relu, resnet.maxpool
+        )  # /4 -> /4
 
         self.down1 = resnet.layer1  # /1 -> /4
         self.down2 = resnet.layer2  # /2 -> /8
@@ -71,13 +71,17 @@ class Network(nn.Module):
 
         out = self.head(f1)  # (B, M+N+4, H/4, W/4)
 
+        if self.raw_output:
+            return out
+
         nb_hm = self.label_count + self.part_count  # M+N
 
         return {  # R = 4
-            "anchor_hm": out[:, :self.label_count],  # (B, M, H/R, W/R)
-            "part_hm": out[:, self.label_count:nb_hm],  # (B, N, H/R, W/R)
-            "offsets": out[:, nb_hm:(nb_hm + 2)],  # (B, 2, H/R, W/R)
-            "embeddings": out[:, (nb_hm + 2):(nb_hm + 4)]}  # (B, 2, H/R, W/R)
+            "anchor_hm": out[:, : self.label_count],  # (B, M, H/R, W/R)
+            "part_hm": out[:, self.label_count : nb_hm],  # (B, N, H/R, W/R)
+            "offsets": out[:, nb_hm : (nb_hm + 2)],  # (B, 2, H/R, W/R)
+            "embeddings": out[:, (nb_hm + 2) : (nb_hm + 4)],
+        }  # (B, 2, H/R, W/R)
 
     def save(self, path="last_model.pth"):
         torch.save(self.state_dict(), path)

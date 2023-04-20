@@ -20,8 +20,8 @@ def draw(image, annotation, args, unnorm_image=True):
 
     draw = ImageDraw.Draw(img)
     (img_w, img_h) = img.size
-    offset = int(min(img_w, img_h) * 1/100)
-    thickness = int(min(img_w, img_h) * 1/100)
+    offset = int(min(img_w, img_h) * 1 / 100)
+    thickness = int(min(img_w, img_h) * 1 / 100)
 
     for obj in annotation.objects:
         obj_color = args._label_color_map[obj.name]
@@ -31,13 +31,18 @@ def draw(image, annotation, args, unnorm_image=True):
         for kp in obj.parts:
             kp_color = args._part_color_map[kp.kind]
 
-            draw.line([x, y, kp.x, kp.y],
-                fill="white", width=thickness)
-            draw.ellipse([kp.x - offset, kp.y - offset, kp.x + offset, kp.y + offset],
-                fill=kp_color, outline=kp_color)
+            draw.line([x, y, kp.x, kp.y], fill="white", width=thickness)
+            draw.ellipse(
+                [kp.x - offset, kp.y - offset, kp.x + offset, kp.y + offset],
+                fill=kp_color,
+                outline=kp_color,
+            )
 
-        draw.ellipse([x - offset, y - offset, x + offset, y + offset],
-            fill=obj_color, outline=obj_color)
+        draw.ellipse(
+            [x - offset, y - offset, x + offset, y + offset],
+            fill=obj_color,
+            outline=obj_color,
+        )
 
         # if obj.box is not None:
         #     box = obj.box
@@ -47,13 +52,27 @@ def draw(image, annotation, args, unnorm_image=True):
 
 
 def draw_heatmaps(anchor_hm, part_hm, args):
-    assert anchor_hm.dim() == 3 and part_hm.dim() == 3, "Do not send batched data to this function, only one sample"
+    assert (
+        anchor_hm.dim() == 3 and part_hm.dim() == 3
+    ), "Do not send batched data to this function, only one sample"
 
     (c1, h, w) = anchor_hm.shape
     c2 = part_hm.shape[0]
 
-    obj_colors = torch.tensor([args._label_color_map.get(args._r_labels.get(i, None), (0, 0, 0)) for i in range(c1)], device=anchor_hm.device)
-    part_colors = torch.tensor([args._part_color_map.get(args._r_parts.get(i, None), (0, 0, 0)) for i in range(c2)], device=part_hm.device)
+    obj_colors = torch.tensor(
+        [
+            args._label_color_map.get(args._r_labels.get(i, None), (0, 0, 0))
+            for i in range(c1)
+        ],
+        device=anchor_hm.device,
+    )
+    part_colors = torch.tensor(
+        [
+            args._part_color_map.get(args._r_parts.get(i, None), (0, 0, 0))
+            for i in range(c2)
+        ],
+        device=part_hm.device,
+    )
 
     obj_colors = obj_colors[..., None, None].expand(-1, -1, h, w)
     part_colors = part_colors[..., None, None].expand(-1, -1, h, w)
@@ -79,24 +98,38 @@ def draw_kp_and_emb(image, topk_obj, topk_kp, embeddings, args):
     img = F.to_pil_image(img)  # This converts from [0, 1] to [0, 255]
     draw = ImageDraw.Draw(img)
     (img_w, img_h) = img.size
-    offset = int(min(img_w, img_h) * 1/100)
-    thickness = int(min(img_w, img_h) * 1/100)
+    offset = int(min(img_w, img_h) * 1 / 100)
+    thickness = int(min(img_w, img_h) * 1 / 100)
 
     (obj_scores, _, obj_labels, obj_ys, obj_xs) = topk_obj
     (part_scores, _, part_labels, part_ys, part_xs) = topk_kp
 
-    for (x, y, label, score) in zip(obj_xs.squeeze(0), obj_ys.squeeze(0), obj_labels.squeeze(0), obj_scores.squeeze(0)):
-        if score < thresh: continue
+    for (x, y, label, score) in zip(
+        obj_xs.squeeze(0),
+        obj_ys.squeeze(0),
+        obj_labels.squeeze(0),
+        obj_scores.squeeze(0),
+    ):
+        if score < thresh:
+            continue
         color = args._label_color_map[args._r_labels[label.item()]]
 
         x *= args.down_ratio
         y *= args.down_ratio
 
-        draw.ellipse([x - offset, y - offset, x + offset, y + offset],
-            fill=color, outline=color)
+        draw.ellipse(
+            [x - offset, y - offset, x + offset, y + offset], fill=color, outline=color
+        )
 
-    for (x, y, label, score, embeddings) in zip(part_xs.squeeze(0), part_ys.squeeze(0), part_labels.squeeze(0), part_scores.squeeze(0), embeddings.squeeze(0)):
-        if score < thresh: continue
+    for (x, y, label, score, embeddings) in zip(
+        part_xs.squeeze(0),
+        part_ys.squeeze(0),
+        part_labels.squeeze(0),
+        part_scores.squeeze(0),
+        embeddings.squeeze(0),
+    ):
+        if score < thresh:
+            continue
         color = args._part_color_map[args._r_parts[label.item()]]
 
         x *= args.down_ratio
@@ -105,8 +138,9 @@ def draw_kp_and_emb(image, topk_obj, topk_kp, embeddings, args):
         e_x = x + args.down_ratio * embeddings[0]
         e_y = y + args.down_ratio * embeddings[1]
 
-        draw.ellipse([x - offset, y - offset, x + offset, y + offset],
-            fill=color, outline=color)
+        draw.ellipse(
+            [x - offset, y - offset, x + offset, y + offset], fill=color, outline=color
+        )
 
         draw.line([x, y, e_x, e_y], fill=color, width=thickness)
 
@@ -121,7 +155,7 @@ def draw_embeddings(image, embeddings, args):
     image = F.to_pil_image(un_normalize(image.cpu()))
     draw = ImageDraw.Draw(image)
 
-    thickness = int(min(image.size) * 0.5/100)
+    thickness = int(min(image.size) * 0.5 / 100)
 
     for y in range(0, embeddings.shape[0], 4):
         for x in range(0, embeddings.shape[1], 4):
@@ -134,24 +168,27 @@ def draw_embeddings(image, embeddings, args):
             draw.line([x1, y1, x2, y2], fill=(255, 0, 0), width=thickness)
 
     return image
-    
+
 
 def draw_keypoints(image, keypoints, args):
     image = image.copy()
     draw = ImageDraw.Draw(image)
-    
+
     img_w, img_h = image.size
-    offset = int(min(img_w, img_h) * 1/100)
+    offset = int(min(img_w, img_h) * 1 / 100)
 
     for kp in keypoints:
         if kp.kind in args.labels.keys():
             color = args._label_color_map[kp.kind]
         elif kp.kind in args.parts.keys():
             color = args._part_color_map[kp.kind]
-        else: raise ValueError
+        else:
+            raise ValueError
 
-        draw.ellipse([kp.x - offset, kp.y - offset, kp.x + offset, kp.y + offset],
-            fill=color, 
-            outline=color)
+        draw.ellipse(
+            [kp.x - offset, kp.y - offset, kp.x + offset, kp.y + offset],
+            fill=color,
+            outline=color,
+        )
 
     return image
