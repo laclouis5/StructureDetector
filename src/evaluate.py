@@ -14,7 +14,7 @@ def main():
         batch_size=1, collate_fn=CropDataset.collate_fn,
         pin_memory=args.use_cuda,
         num_workers=args.num_workers,
-        multiprocessing_context="forkserver"
+        multiprocessing_context="forkserver",
     )
 
     decoder = Decoder(args)
