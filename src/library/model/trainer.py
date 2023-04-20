@@ -100,9 +100,7 @@ class Trainer:
         ):
             for k, v in batch.items():
                 if isinstance(v, torch.Tensor):
-                    batch[k] = v.to(self.args.device)
-
-            self.optimizer.zero_grad(set_to_none=True)
+                    batch[k] = v.to(self.args.device, non_blocking=self.args.use_cuda)
 
             with torch.autocast(
                 device_type=self.autocast_device,
@@ -112,6 +110,7 @@ class Trainer:
                 output = self.net(batch["image"])
                 loss = self.loss(output, batch)
 
+            self.optimizer.zero_grad(set_to_none=True)
             loss.backward()
             self.optimizer.step()
 
@@ -141,7 +140,9 @@ class Trainer:
             ):
                 for k, v in batch.items():
                     if isinstance(v, torch.Tensor):
-                        batch[k] = v.to(self.args.device)
+                        batch[k] = v.to(
+                            self.args.device, non_blocking=self.args.use_cuda
+                        )
 
                 with torch.no_grad():
                     output = self.net(batch["image"])
