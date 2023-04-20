@@ -8,19 +8,20 @@ SDNet is a BMVC 2021 published work : <https://www.bmvc2021-virtualconference.co
 
 ## Installation
 
-We recommend using a conda environment:
+Install Poetry then:
 
 ```shell
 git clone https://github.com/louislac/StructureDetector
 cd StructureDetector
-conda env create
-conda activate sdnet
+poetry install
 ```
+
+Activate the virtual environment in the shell with `poetry shell`.
 
 Supported accelerators:
 
 * NVIDIA GPUs (CUDA)
-* Apple Silicon GPUs (MPS) (experimental)
+* Apple Silicon GPUs (MPS)
 
 ## Reproduce Our Results
 
@@ -32,7 +33,7 @@ python src/evaluate.py --valid_dir database/valid --load_model model_best_classi
 
 This should reproduce the results of our paper up to some small error margin depending on the hardware.
 
-The dataset is currently in the process of being published. It can be accessed [here](https://data.mendeley.com/datasets/d7kbzjr83k/1). The trained network `best_model_classif.pth` is available on demand (see the contact address at the bottom).
+The dataset can be accessed [here](https://data.mendeley.com/datasets/d7kbzjr83k/1). The trained network `best_model_classif.pth` is available on demand (see the contact address at the bottom).
 
 ## Train Your Own Model
 
