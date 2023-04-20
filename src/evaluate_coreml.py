@@ -106,6 +106,7 @@ def main():
         collate_fn=CropDataset.collate_fn,
         num_workers=args.num_workers,
         prefetch_factor=4,
+        multiprocessing_context="fork",
     )
 
     for batch in tqdm(dataloader, desc="Evaluation", unit="image"):
