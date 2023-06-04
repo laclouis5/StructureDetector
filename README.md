@@ -120,4 +120,4 @@ The performance can be benchmarked with `src/evaluate_coreml.py` and it is very 
 
 ## Contact
 
-Feel free to ask you questions or request data by [email](teaser-rainy.0y@icloud.com).
+Feel free to ask you questions or request data by [email](mailto:teaser-rainy.0y@icloud.com).
