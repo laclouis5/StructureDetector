@@ -1,5 +1,5 @@
 from .loss import Loss, LossStats
-from .network import Network
+from .hrnet import HRNet18V2Pose
 from .evaluator import Evaluator
 from ..data import *
 
@@ -15,7 +15,7 @@ from pathlib import Path
 class Trainer:
     def __init__(self, args):
         self.args = args
-        self.net = Network(args, pretrained=True)
+        self.net = HRNet18V2Pose(args)
         self.loss = Loss(args)
         self.decoder = Decoder(args)
         self.evaluator = Evaluator(args)
