@@ -1,10 +1,5 @@
 import coremltools as ct
 import coremltools.optimize.coreml as cto
-from coremltools.optimize.coreml import (
-    OpPalettizerConfig,
-    OptimizationConfig,
-    palettize_weights,
-)
 
 import torch
 import json
@@ -142,9 +137,9 @@ def main():
         config = cto.OptimizationConfig(global_config=op_config)
         mlmodel = cto.linear_quantize_weights(mlmodel, config=config)
     elif args.palettize:
-        op_config = OpPalettizerConfig(mode="kmeans", nbits=8, weight_threshold=512)
-        config = OptimizationConfig(global_config=op_config)
-        mlmodel = palettize_weights(mlmodel, config=config)
+        op_config = cto.OpPalettizerConfig(mode="kmeans", nbits=8, weight_threshold=512)
+        config = cto.OptimizationConfig(global_config=op_config)
+        mlmodel = cto.palettize_weights(mlmodel, config=config)
 
     mlmodel.author = "Louis Lac"
     mlmodel.license = "MIT"
