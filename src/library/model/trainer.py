@@ -97,9 +97,7 @@ class Trainer:
                 if isinstance(v, torch.Tensor):
                     batch[k] = v.to(self.args.device, non_blocking=self.args.use_cuda)
 
-            with torch.autocast(
-                device_type=self.args.device, enabled=self.args.use_amp
-            ):
+            with torch.autocast(device_type="cpu", enabled=self.args.use_amp):
                 output = self.net(batch["image"])
                 loss = self.loss(output, batch)
 
@@ -124,7 +122,7 @@ class Trainer:
         self.evaluator.reset()
         loss_stats = LossStats()
 
-        with torch.autocast(device_type=self.args.device, enabled=self.args.use_amp):
+        with torch.autocast(device_type="cpu", enabled=self.args.use_amp):
             for batch in tqdm(
                 self.valid_dataloader, desc="Validation", leave=False, unit="image"
             ):

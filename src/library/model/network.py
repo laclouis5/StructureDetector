@@ -1,32 +1,99 @@
 import torch
 import torch.nn as nn
-from torchvision.models import resnet34, ResNet34_Weights
+import torch.nn.functional as F
+from torch import Tensor
+from torchvision.models import mobilenet_v3_large, MobileNet_V3_Large_Weights
+from collections import OrderedDict
 
 
-class Fpn(nn.Module):
-    def __init__(self, in_channels, out_channels):
+class IntermediateLayerGetter(nn.ModuleDict):
+    def __init__(self, model: nn.Module, return_layers: dict[str, str]) -> None:
+        if not set(return_layers).issubset(
+            [name for name, _ in model.named_children()]
+        ):
+            raise ValueError("return_layers are not present in model")
+
+        orig_return_layers = return_layers
+        return_layers = {str(k): str(v) for k, v in return_layers.items()}
+        layers = OrderedDict()
+
+        for name, module in model.named_children():
+            layers[name] = module
+            if name in return_layers:
+                del return_layers[name]
+            if not return_layers:
+                break
+
+        super().__init__(layers)
+        self.return_layers = orig_return_layers
+
+    def forward(self, x):
+        out = OrderedDict()
+
+        for name, module in self.items():
+            x = module(x)
+            if name in self.return_layers:
+                out_name = self.return_layers[name]
+                out[out_name] = x
+
+        return out
+
+
+class LRASPPHead(nn.Module):
+    def __init__(
+        self,
+        low_channels: int,
+        high_channels: int,
+        num_classes: int,
+        inter_channels: int = 128,
+    ) -> None:
         super().__init__()
-
-        self.up = nn.Upsample(scale_factor=2)
-        self.lateral = nn.Conv2d(in_channels, out_channels, kernel_size=1)
-        self.conv = nn.Sequential(
-            nn.Conv2d(out_channels, out_channels, kernel_size=3, padding=1, bias=False),
-            nn.BatchNorm2d(out_channels),
+        self.cbr = nn.Sequential(
+            nn.Conv2d(high_channels, inter_channels, 1, bias=False),
+            nn.BatchNorm2d(inter_channels),
             nn.ReLU(inplace=True),
         )
+        self.scale = nn.Sequential(
+            nn.AdaptiveAvgPool2d(1),
+            nn.Conv2d(high_channels, inter_channels, 1, bias=False),
+            nn.Sigmoid(),
+        )
+        self.low_classifier = nn.Conv2d(low_channels, num_classes, 1)
+        self.high_classifier = nn.Conv2d(inter_channels, num_classes, 1)
 
-    def forward(self, input, shortcut):
-        return self.conv(self.up(input) + self.lateral(shortcut))
+    def forward(self, input: dict[str, Tensor]) -> Tensor:
+        low = input["low"]
+        high = input["high"]
+
+        x = self.cbr(high)
+        s = self.scale(high)
+        x = x * s
+
+        x = F.interpolate(x, size=low.shape[-2:], mode="bilinear", align_corners=False)
+
+        return self.low_classifier(low) + self.high_classifier(x)
 
 
-class Head(nn.Module):
-    def __init__(self, in_channels, out_channels):
+class LRASPPMobileNetV3Large(nn.Module):
+    def __init__(self, num_classes: int, pretrained: bool = True):
         super().__init__()
 
-        self.conv = nn.Conv2d(in_channels, out_channels, kernel_size=1)
+        net = mobilenet_v3_large(
+            weights=MobileNet_V3_Large_Weights.DEFAULT if pretrained else None,
+            dilated=True,
+        )
 
-    def forward(self, input):
-        return self.conv(input)
+        self.backbone = IntermediateLayerGetter(
+            net.features,
+            return_layers={"4": "low", "16": "high"},
+        )
+        self.avgpool = nn.AdaptiveAvgPool2d(1)
+        self.lraspp = LRASPPHead(40, 960, num_classes=num_classes)
+
+    def forward(self, input: Tensor) -> Tensor:
+        features = self.backbone(input)
+        mask = self.lraspp(features)
+        return F.interpolate(mask, scale_factor=2, mode="bilinear", align_corners=False)
 
 
 class Network(nn.Module):
@@ -36,40 +103,13 @@ class Network(nn.Module):
         self.label_count = len(args.labels)  # M
         self.part_count = len(args.parts)  # N
         self.out_channels = self.label_count + self.part_count + 4  # M+N+4
-        self.fpn_depth = args.fpn_depth
 
-        resnet = resnet34(weights=ResNet34_Weights.DEFAULT if pretrained else None)
-
-        self.adpater = nn.Sequential(
-            resnet.conv1, resnet.bn1, resnet.relu, resnet.maxpool
-        )  # /4 -> /4
-
-        self.down1 = resnet.layer1  # /1 -> /4
-        self.down2 = resnet.layer2  # /2 -> /8
-        self.down3 = resnet.layer3  # /2 -> /16
-        self.down4 = resnet.layer4  # /2 -> /32
-
-        self.up1 = nn.Conv2d(512, self.fpn_depth, kernel_size=1)  # x1 -> /32
-        self.up2 = Fpn(256, self.fpn_depth)  # x2 -> /16
-        self.up3 = Fpn(128, self.fpn_depth)  # x2 -> /8
-        self.up4 = Fpn(64, self.fpn_depth)  # x2 -> /4
-
-        self.head = Head(self.fpn_depth, self.out_channels)
+        self.net = LRASPPMobileNetV3Large(
+            num_classes=self.out_channels, pretrained=pretrained
+        )
 
     def forward(self, x):  # (B, 3, H, W)
-        p1 = self.adpater(x)  # (B, 64, H/4, W/4)
-
-        p2 = self.down1(p1)  # (B, 64, H/4, W/4)
-        p3 = self.down2(p2)  # (B, 128, H/8, W/8)
-        p4 = self.down3(p3)  # (B, 256, H/16, W/16)
-        p5 = self.down4(p4)  # (B, 512, H/32, W/32)
-
-        f4 = self.up1(p5)  # (B, 128, H/32, W/32)
-        f3 = self.up2(f4, p4)  # (B, 128, H/16, W/16)
-        f2 = self.up3(f3, p3)  # (B, 128, H/8, W/8)
-        f1 = self.up4(f2, p2)  # (B, 128, H/4, W/4)
-
-        out = self.head(f1)  # (B, M+N+4, H/4, W/4)
+        out = self.net(x)  # (B, M+N+4, H/4, W/4)
 
         if self.raw_output:
             return out
