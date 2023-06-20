@@ -28,11 +28,6 @@ class Trainer:
         self.best_classif = 0.0
         self.best_kp_reg = 0.0
 
-        # TODO: Add MPS support when will be avaiable
-        self.autocast_device, self.autocast_dtype = (
-            ("cuda", torch.float16) if args.use_cuda else ("cpu", torch.bfloat16)
-        )
-
         # TODO: Test this.
         if args.pretrained_model:
             self.net.load_state_dict(
@@ -103,9 +98,7 @@ class Trainer:
                     batch[k] = v.to(self.args.device, non_blocking=self.args.use_cuda)
 
             with torch.autocast(
-                device_type=self.autocast_device,
-                dtype=self.autocast_dtype,
-                enabled=self.args.use_amp,
+                device_type=self.args.device, enabled=self.args.use_amp
             ):
                 output = self.net(batch["image"])
                 loss = self.loss(output, batch)
@@ -131,11 +124,7 @@ class Trainer:
         self.evaluator.reset()
         loss_stats = LossStats()
 
-        with torch.autocast(
-            device_type=self.autocast_device,
-            dtype=self.autocast_dtype,
-            enabled=self.args.use_amp,
-        ):
+        with torch.autocast(device_type=self.args.device, enabled=self.args.use_amp):
             for batch in tqdm(
                 self.valid_dataloader, desc="Validation", leave=False, unit="image"
             ):
