@@ -89,7 +89,7 @@ class Arguments:
             "--down_ratio",
             "-g",
             type=float,
-            default=4.0,
+            default=1.0,
             help="The Downsampling ratio introduced by pooling layers of the network. Change it only if you change network architecture.",
         )
         parser.add_argument(
