@@ -160,7 +160,7 @@ class Trainer:
                 self.loss(output, batch)
                 loss_stats += self.loss.stats
 
-        loss_stats /= len(self.valid_dataloader)
+            loss_stats /= len(self.valid_dataloader)
 
         # Compute metrics
         all_anchor_evals = self.evaluator.anchor_eval.reduce()

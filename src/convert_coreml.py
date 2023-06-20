@@ -80,16 +80,18 @@ def parse_args():
         help="If this option is specified, the input ImageNet normalization will be embedded in the network. The network input will be of type `ImageType`.",
     )
 
-    parser.add_argument(
+    quant_args = parser.add_mutually_exclusive_group()
+
+    quant_args.add_argument(
         "--quantize",
         action="store_true",
         help="Quantize the model using Linear 8-Bit Qauntization.",
     )
 
-    parser.add_argument(
+    quant_args.add_argument(
         "--palettize",
         action="store_true",
-        help="Palettize the model using Linear 8-Bit Palettization.",
+        help="Palettize the model using 8-Bit Palettization.",
     )
 
     args = parser.parse_args()
@@ -140,7 +142,7 @@ def main():
         config = cto.OptimizationConfig(global_config=op_config)
         mlmodel = cto.linear_quantize_weights(mlmodel, config=config)
     elif args.palettize:
-        op_config = OpPalettizerConfig(mode="kmeans", nbits=6, weight_threshold=512)
+        op_config = OpPalettizerConfig(mode="kmeans", nbits=8, weight_threshold=512)
         config = OptimizationConfig(global_config=op_config)
         mlmodel = palettize_weights(mlmodel, config=config)
 
