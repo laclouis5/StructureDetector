@@ -1,4 +1,11 @@
 import coremltools as ct
+import coremltools.optimize.coreml as cto
+from coremltools.optimize.coreml import (
+    OpPalettizerConfig,
+    OptimizationConfig,
+    palettize_weights,
+)
+
 import torch
 import json
 import argparse
@@ -73,6 +80,18 @@ def parse_args():
         help="If this option is specified, the input ImageNet normalization will be embedded in the network. The network input will be of type `ImageType`.",
     )
 
+    parser.add_argument(
+        "--quantize",
+        action="store_true",
+        help="Quantize the model using Linear 8-Bit Qauntization.",
+    )
+
+    parser.add_argument(
+        "--palettize",
+        action="store_true",
+        help="Palettize the model using Linear 8-Bit Palettization.",
+    )
+
     args = parser.parse_args()
 
     labels_file = Path(args.params).expanduser().resolve()
@@ -116,6 +135,15 @@ def main():
         outputs=[ct.TensorType(name="output")],
     )
 
+    if args.quantize:
+        op_config = cto.OpLinearQuantizerConfig(mode="linear", weight_threshold=512)
+        config = cto.OptimizationConfig(global_config=op_config)
+        mlmodel = cto.linear_quantize_weights(mlmodel, config=config)
+    elif args.palettize:
+        op_config = OpPalettizerConfig(mode="kmeans", nbits=6, weight_threshold=512)
+        config = OptimizationConfig(global_config=op_config)
+        mlmodel = palettize_weights(mlmodel, config=config)
+
     mlmodel.author = "Louis Lac"
     mlmodel.license = "MIT"
     mlmodel.short_description = "SDNet"
@@ -130,9 +158,6 @@ def main():
     }
 
     mlmodel.user_defined_metadata["params"] = json.dumps(params)
-
-    # Workaround for https://github.com/apple/coremltools/issues/1680
-    mlmodel = ct.models.MLModel(mlmodel._spec, weights_dir=mlmodel._weights_dir)
 
     mlmodel.save(args.output)
 
