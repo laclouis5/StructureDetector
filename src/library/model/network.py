@@ -93,9 +93,7 @@ class LRASPPMobileNetV3Large(nn.Module):
     def forward(self, input: Tensor) -> Tensor:
         features = self.backbone(input)
         mask = self.lraspp(features)
-        return F.interpolate(
-            mask, size=input.shape[-2:], mode="bilinear", align_corners=False
-        )
+        return F.interpolate(mask, scale_factor=2, mode="bilinear", align_corners=False)
 
 
 class Network(nn.Module):
