@@ -134,7 +134,7 @@ class Trainer:
             device_type=self.autocast_device,
             dtype=self.autocast_dtype,
             enabled=self.args.use_amp,
-        ):
+        ), torch.inference_mode():
             for batch in tqdm(
                 self.valid_dataloader, desc="Validation", leave=False, unit="image"
             ):
@@ -144,8 +144,7 @@ class Trainer:
                             self.args.device, non_blocking=self.args.use_cuda
                         )
 
-                with torch.no_grad():
-                    output = self.net(batch["image"])
+                output = self.net(batch["image"])
 
                 data = self.decoder(output, return_metadata=True)
                 prediction = data["annotation"][0]
