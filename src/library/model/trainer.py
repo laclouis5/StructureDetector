@@ -125,6 +125,7 @@ class Trainer:
         self.scheduler.step()
         self.train_set.transform.trigger_random_resize()
 
+    @torch.inference_mode()
     def valid(self):
         self.net.eval()
         self.evaluator.reset()
@@ -134,7 +135,7 @@ class Trainer:
             device_type=self.autocast_device,
             dtype=self.autocast_dtype,
             enabled=self.args.use_amp,
-        ), torch.inference_mode():
+        ):
             for batch in tqdm(
                 self.valid_dataloader, desc="Validation", leave=False, unit="image"
             ):
@@ -160,7 +161,7 @@ class Trainer:
                 self.loss(output, batch)
                 loss_stats += self.loss.stats
 
-            loss_stats /= len(self.valid_dataloader)
+        loss_stats /= len(self.valid_dataloader)
 
         # Compute metrics
         all_anchor_evals = self.evaluator.anchor_eval.reduce()
