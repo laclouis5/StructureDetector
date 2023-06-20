@@ -115,7 +115,9 @@ For maximum prediction speed on Apple platforms the model can be compiled to a C
 python src/convert_coreml.py <in_model.pth> --output <out_name.mlpackage>
 ```
 
-The Xcode CoreML model explorer claims a median prediction speed of 5 ms on my MacBook Pro M1 Pro using the ANE and 13 ms using the GPU. In practice, in a more realistic setting (sub-optimal though) I've been able to achieve 90 fps (11 ms) using the ANE.
+The Xcode CoreML model explorer claims a median prediction speed of 5 ms on a MacBook Pro M1 Pro using the ANE and 13 ms using the GPU. In practice, in a more realistic setting (sub-optimal though) I've been able to achieve 90 fps (11 ms) using the ANE.
+
+The CoreML model can optionally be quantized to reduce its storage size by specifiying either the `--quantize` or `--palettize` option.
 
 The performance can be benchmarked with `src/evaluate_coreml.py` and it is very close to the original network.
 
