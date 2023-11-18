@@ -1,14 +1,19 @@
-from library import *
-from tqdm.contrib import tzip
+from pathlib import Path
+
 import torch
 from PIL import Image
+from torch.utils.data import DataLoader
+from tqdm.contrib import tzip
 
+from ..data import Decoder, PredictionDataset, PredictionTransformation, draw
+from ..model import Network
+from ..utils import Arguments
 
 if __name__ == "__main__":
     args = args = Arguments().parse()
 
     dataset = PredictionDataset(args.valid_dir, PredictionTransformation(args))
-    dataloader = torch.utils.data.DataLoader(
+    dataloader = DataLoader(
         dataset, batch_size=1, pin_memory=args.use_cuda, num_workers=args.num_workers
     )
 

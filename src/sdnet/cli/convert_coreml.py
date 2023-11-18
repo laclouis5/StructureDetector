@@ -1,11 +1,12 @@
-import coremltools as ct
-import torch
-import json
 import argparse
+import json
 from pathlib import Path
 
-from library.utils import clamped_sigmoid, nms
-from library.model import Network
+import coremltools as ct
+import torch
+
+from ..model import Network
+from ..utils import clamped_sigmoid, nms
 
 
 class RawDecoder:

@@ -1,10 +1,11 @@
-from .utils import get_unique_color_map, set_seed
-
 import argparse
 import json
-from pathlib import Path
 from multiprocessing import cpu_count
+from pathlib import Path
+
 import torch
+
+from .utils import get_unique_color_map, set_seed
 
 
 class Arguments:

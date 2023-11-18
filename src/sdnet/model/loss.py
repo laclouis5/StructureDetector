@@ -1,7 +1,8 @@
-from ..utils import *
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+
+from ..utils import clamped_sigmoid, transpose_and_gather
 
 
 class Loss(nn.Module):

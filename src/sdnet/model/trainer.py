@@ -1,16 +1,23 @@
-from .loss import Loss, LossStats
-from .network import Network
-from .evaluator import Evaluator
-from ..data import *
-
-import torch
-import torch.nn as nn
-import torchvision.transforms.functional as F
-import torch.utils.data as data
-from torch.utils.tensorboard import SummaryWriter
-from tqdm import tqdm
 from datetime import datetime
 from pathlib import Path
+
+import torch
+import torch.utils.data as data
+import torchvision.transforms.functional as F
+from torch.utils.tensorboard import SummaryWriter
+from tqdm import tqdm
+
+from ..data import CropDataset, Decoder, TrainAugmentation, ValidationAugmentation
+from ..utils import (
+    draw,
+    draw_embeddings,
+    draw_heatmaps,
+    draw_kp_and_emb,
+    mkdir_if_needed,
+)
+from .evaluator import Evaluator
+from .loss import Loss, LossStats
+from .network import Network
 
 
 class Trainer:
@@ -99,7 +106,7 @@ class Trainer:
         for batch in tqdm(
             self.train_dataloader, desc="Epoch", leave=False, unit="batch"
         ):
-            for (k, v) in batch.items():
+            for k, v in batch.items():
                 if isinstance(v, torch.Tensor):
                     batch[k] = v.to(self.args.device)
 

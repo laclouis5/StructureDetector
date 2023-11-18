@@ -1,8 +1,9 @@
-from ..utils import *
+import torch
 import torchvision.transforms as torchtf
 import torchvision.transforms.functional as F
-import torch
 from PIL.Image import Image
+
+from ..utils import clip_annotation, gaussian_2d, hflip_annotation, vflip_annotation
 
 
 class RandomHorizontalFlip:
@@ -208,7 +209,6 @@ class Encode:
 
 
 class TrainAugmentation:
-
     ratios = (0.75, 0.8125, 0.875, 0.9375, 1, 1.0625, 1.125, 1.1875, 1.25)
 
     def __init__(self, args):

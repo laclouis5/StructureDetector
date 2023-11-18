@@ -1,7 +1,8 @@
 import torch
-from .network import Network
-from ..data import Decoder
 import torchvision.transforms as torchtf
+
+from ..data import Decoder
+from .network import Network
 
 
 class Predictor(torch.nn.Module):
@@ -25,7 +26,6 @@ class Predictor(torch.nn.Module):
         self.transform.to(args.device)
 
     def forward(self, image):
-
         with torch.no_grad():
             input = image.to(self.args.device)
             input = self.transform(image)

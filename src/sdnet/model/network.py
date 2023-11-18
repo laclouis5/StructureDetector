@@ -1,6 +1,6 @@
 import torch
 import torch.nn as nn
-from torchvision.models import resnet34, ResNet34_Weights
+from torchvision.models import ResNet34_Weights, resnet34
 
 
 class Fpn(nn.Module):

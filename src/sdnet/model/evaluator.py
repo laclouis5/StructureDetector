@@ -1,10 +1,13 @@
-from ..utils import *
-import numpy as np
 import sys
-from functools import reduce
-from rich import print as rprint
-from rich.table import Table, Column
 from copy import copy
+from functools import reduce
+from pathlib import Path
+
+import numpy as np
+from rich import print as rprint
+from rich.table import Column, Table
+
+from ..utils import dict_grouping
 
 
 class Evaluation:
@@ -632,12 +635,12 @@ class Evaluator:
         }
 
         description = ""
-        for (metric_name, evaluations) in results.items():
+        for metric_name, evaluations in results.items():
             description += f"{metric_name}\n"
             if len(evaluations) > 1:
                 description += f"  total: {evaluations.reduce()}\n"
             evaluations = sorted(evaluations.items(), key=lambda tuple: tuple[0])
-            for (label, evaluation) in evaluations:
+            for label, evaluation in evaluations:
                 description += f"  {label}: {evaluation}\n"
 
         return description

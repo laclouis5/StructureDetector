@@ -1,4 +1,5 @@
-from library import *
+from ..model import Trainer
+from ..utils import Arguments
 
 
 def main():

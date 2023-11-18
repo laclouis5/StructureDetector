@@ -5,20 +5,32 @@ description = ""
 authors = ["Louis Lac <lac.louis5@gmail.com>"]
 license = "MIT"
 readme = "README.md"
+packages = [{ include = "sdnet", from = "src" }]
 
 [tool.poetry.dependencies]
-python = "^3.10"
+python = "^3.10,<3.12"
 numpy = "^1.24.2"
 pillow = "^9.5.0"
-torch = "^2.0.0"
-torchvision = "^0.15.1"
+torch = [
+    { version = "^2.0.0", source = "pytorch", platform = "!=darwin" },
+    { version = "^2.0.0", source = "pypi", platform = "darwin" },
+]
+torchvision = [
+    { version = "^0.15.1", source = "pytorch", platform = "!=darwin" },
+    { version = "^0.15.1", source = "pypi", platform = "darwin" },
+]
 tensorboard = "^2.12.1"
 rich = "^13.3.3"
 tqdm = "^4.65.0"
 xxhash = "^3.2.0"
-coremltools = "^6.2"
+coremltools = "^7.0"
 torch-tb-profiler = "^0.4.1"
+click = "^8.1.7"
 
+[[tool.poetry.source]]
+name = "pytorch"
+url = "https://download.pytorch.org/whl/cu118"
+priority = "explicit"
 
 [build-system]
 requires = ["poetry-core"]

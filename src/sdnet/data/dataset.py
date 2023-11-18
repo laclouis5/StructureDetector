@@ -1,9 +1,13 @@
-from ..utils import *
+from collections import defaultdict
+from pathlib import Path
+
 import torch
 import torch.utils.data as data
 from PIL import Image
+
+from ..data import ImageAnnotation
+from ..utils import files_with_extension
 from .transforms import Compose
-from collections import defaultdict
 
 
 class CropDataset(data.Dataset):
@@ -196,7 +200,7 @@ class LabelStats:
 
     def __repr__(self):
         parts = "{"
-        for (name, count) in self.parts.items():
+        for name, count in self.parts.items():
             parts += f"'{name}': {count}"
         parts += "}"
 
@@ -227,7 +231,7 @@ class DatasetStats:
 
     def __repr__(self):
         description = ""
-        for (label, stats) in self.items():
+        for label, stats in self.items():
             description += f"label: {label}\n"
             description += f"{stats}"
         return description

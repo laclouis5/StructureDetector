@@ -1,7 +1,6 @@
-from .utils import *
-from PIL import ImageDraw
-import torchvision.transforms.functional as F
 import torch
+import torchvision.transforms.functional as F
+from PIL import ImageDraw
 
 
 def un_normalize(tensor):  # (B, 3, H, W)
@@ -104,7 +103,7 @@ def draw_kp_and_emb(image, topk_obj, topk_kp, embeddings, args):
     (obj_scores, _, obj_labels, obj_ys, obj_xs) = topk_obj
     (part_scores, _, part_labels, part_ys, part_xs) = topk_kp
 
-    for (x, y, label, score) in zip(
+    for x, y, label, score in zip(
         obj_xs.squeeze(0),
         obj_ys.squeeze(0),
         obj_labels.squeeze(0),
@@ -121,7 +120,7 @@ def draw_kp_and_emb(image, topk_obj, topk_kp, embeddings, args):
             [x - offset, y - offset, x + offset, y + offset], fill=color, outline=color
         )
 
-    for (x, y, label, score, embeddings) in zip(
+    for x, y, label, score, embeddings in zip(
         part_xs.squeeze(0),
         part_ys.squeeze(0),
         part_labels.squeeze(0),

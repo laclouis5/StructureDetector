@@ -1,10 +1,11 @@
 import copy
 import json
-import torch
-import numpy as np
-import torch.nn as nn
 from collections import defaultdict
 from pathlib import Path
+
+import numpy as np
+import torch
+import torch.nn as nn
 from xxhash import xxh64_digest
 
 
@@ -218,7 +219,7 @@ class Object:
             if part.kind == anchor_name:
                 assert (
                     anchor is None
-                ), f"More than one anchor found for object, achor must be unique."
+                ), "More than one anchor found for object, achor must be unique."
                 anchor = part
             else:
                 parts.append(part)
