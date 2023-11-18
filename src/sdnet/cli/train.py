@@ -11,7 +11,3 @@ def main():
 
     trainer = Trainer(args)
     trainer.train()
-
-
-if __name__ == "__main__":
-    main()

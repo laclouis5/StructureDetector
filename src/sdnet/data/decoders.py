@@ -2,8 +2,16 @@ from collections import defaultdict
 
 import torch
 
-from ..data import ImageAnnotation, Keypoint, Object
-from ..utils import clamped_sigmoid, hypot, nms, topk, transpose_and_gather
+from ..utils import (
+    ImageAnnotation,
+    Keypoint,
+    Object,
+    clamped_sigmoid,
+    hypot,
+    nms,
+    topk,
+    transpose_and_gather,
+)
 
 
 class Decoder:

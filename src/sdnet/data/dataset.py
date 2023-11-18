@@ -5,7 +5,7 @@ import torch
 import torch.utils.data as data
 from PIL import Image
 
-from ..data import ImageAnnotation
+from ..utils import ImageAnnotation
 from ..utils import files_with_extension
 from .transforms import Compose
 

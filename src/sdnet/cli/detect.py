@@ -5,11 +5,12 @@ from PIL import Image
 from torch.utils.data import DataLoader
 from tqdm.contrib import tzip
 
-from ..data import Decoder, PredictionDataset, PredictionTransformation, draw
+from ..data import Decoder, PredictionDataset, PredictionTransformation
 from ..model import Network
-from ..utils import Arguments
+from ..utils import Arguments, draw
 
-if __name__ == "__main__":
+
+def detect():
     args = args = Arguments().parse()
 
     dataset = PredictionDataset(args.valid_dir, PredictionTransformation(args))
@@ -50,3 +51,7 @@ if __name__ == "__main__":
 
         annotation.save_json("predictions")
         image.save(Path(f"predictions/{image_path.name}"))
+
+
+if __name__ == "__main__":
+    detect()

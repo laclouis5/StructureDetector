@@ -49,7 +49,3 @@ def main():
 
     if args.csv_path is not None:
         evaluator.save_kps_csv(args.csv_path)
-
-
-if __name__ == "__main__":
-    main()

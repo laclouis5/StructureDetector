@@ -8,26 +8,32 @@ SDNet is a BMVC 2021 published work : <https://www.bmvc2021-virtualconference.co
 
 ## Installation
 
-We recommend using a conda environment:
+The project can be installed using Poetry:
 
 ```shell
 git clone https://github.com/louislac/StructureDetector
 cd StructureDetector
-conda env create
-conda activate sdnet
+poetry env use 3.11
+poetry install
+```
+
+The virtual environment can be activated with:
+
+```shell
+poetry shell
 ```
 
 Supported accelerators:
 
 * NVIDIA GPUs (CUDA)
-* Apple Silicon GPUs (MPS) (experimental)
+* Apple Silicon GPUs (MPS)
 
 ## Reproduce Our Results
 
 Download and put the validation dataset in `database/valid/` at the root directory of the repo, then execute this command:
 
 ```shell
-python src/evaluate.py --valid_dir database/valid --load_model model_best_classif.pth --anchor_name stem --conf_threshold 0.4 --decoder_dist_thresh 0.1 --dist_threshold 0.05
+evaluate --valid_dir database/valid --load_model model_best_classif.pth --anchor_name stem --conf_threshold 0.4 --decoder_dist_thresh 0.1 --dist_threshold 0.05
 ```
 
 This should reproduce the results of our paper up to some small error margin depending on the hardware.
@@ -95,13 +101,13 @@ tensorboard --logdir runs
 Launch training with:
 
 ```shell
-python sources/train.py --train_dir train_dir/ --valid_dir valid_dir/
+train --train_dir train_dir/ --valid_dir valid_dir/
 ```
 
 Customize training (epochs, learning rate, ...) by specifying options in the command line arguments. Help is available:
 
 ```shell
-python sources/train.py -h
+train -h
 ```
 
 Best networks are saved in a `trainings/` directory created at the root directory.
@@ -111,12 +117,12 @@ Best networks are saved in a `trainings/` directory created at the root director
 For maximum prediction speed on Apple platforms the model can be compiled to a CoreML model:
 
 ```shell
-python src/convert_coreml.py <in_model.pth> --output <out_name.mlpackage>
+convert_coreml <in_model.pth> --output <out_name.mlpackage>
 ```
 
 The Xcode CoreML model explorer claims a median prediction speed of 5 ms on my MacBook Pro M1 Pro using the ANE and 13 ms using the GPU. In practice, in a more realistic setting (sub-optimal though) I've been able to achieve 90 fps (11 ms) using the ANE.
 
-The performance can be benchmarked with `src/evaluate_coreml.py` and it is very close to the original network.
+The performance can be benchmarked with `evaluate_coreml` and it is very close to the original network.
 
 ## Contact
 

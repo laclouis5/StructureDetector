@@ -35,3 +35,9 @@ priority = "explicit"
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
+
+[tool.poetry.scripts]
+train = "sdnet.cli.train:main"
+evaluate = "sdnet.cli.evaluate:main"
+convert_coreml = "sdnet.cli.convert_coreml:main"
+evaluate_coreml = "sdnet.cli.evaluate_coreml:main"
