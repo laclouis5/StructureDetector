@@ -1,42 +1,44 @@
-[tool.poetry]
+[project]
 name = "sdnet"
 version = "0.1.0"
-description = ""
-authors = ["Louis Lac <lac.louis5@gmail.com>"]
-license = "MIT"
+description = "Structure detection network."
+authors = [{name = "Louis Lac", email = "lac.louis5@gmail.com"}]
 readme = "README.md"
-packages = [{ include = "sdnet", from = "src" }]
-
-[tool.poetry.dependencies]
-python = "^3.10,<3.12"
-numpy = "^1.24.2"
-pillow = "^9.5.0"
-torch = [
-    { version = "^2.0.0", source = "pytorch", platform = "!=darwin" },
-    { version = "^2.0.0", source = "pypi", platform = "darwin" },
+license = "MIT"
+requires-python = ">=3.10"
+dependencies = [
+    "numpy>=1.24.2",
+    "pillow>=9.5.0",
+    "torch>=2.0.0",
+    "torchvision>=0.15.1",
+    "tensorboard>=2.12.1",
+    "rich>=13.3.3",
+    "tqdm>=4.65.0",
+    "xxhash>=3.2.0",
+    "torch-tb-profiler>=0.4.1",
+    "click>=8.1.7",
 ]
-torchvision = [
-    { version = "^0.15.1", source = "pytorch", platform = "!=darwin" },
-    { version = "^0.15.1", source = "pypi", platform = "darwin" },
-]
-tensorboard = "^2.12.1"
-rich = "^13.3.3"
-tqdm = "^4.65.0"
-xxhash = "^3.2.0"
-coremltools = "^7.0"
-torch-tb-profiler = "^0.4.1"
-click = "^8.1.7"
 
-[[tool.poetry.source]]
-name = "pytorch"
-url = "https://download.pytorch.org/whl/cu118"
-priority = "explicit"
+[project.optional-dependencies]
+conversion = [
+    "coremltools>=7.0",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=7.4",
+    "ruff>=0.1.7",
+    "pre-commit>=3.2",
+]
 
 [build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
+requires = ["hatchling"]
+build-backend = "hatchling.build"
 
-[tool.poetry.scripts]
+[tool.hatch.build.targets.wheel]
+packages = ["src/sdnet"]
+
+[project.scripts]
 train = "sdnet.cli.train:main"
 evaluate = "sdnet.cli.evaluate:main"
 convert_coreml = "sdnet.cli.convert_coreml:main"
