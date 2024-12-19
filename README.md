@@ -8,19 +8,10 @@ SDNet is a BMVC 2021 published work : <https://www.bmvc2021-virtualconference.co
 
 ## Installation
 
-The project can be installed using Poetry:
+The project can be installed using uv:
 
 ```shell
-git clone https://github.com/louislac/StructureDetector
-cd StructureDetector
-poetry env use 3.11
-poetry install
-```
-
-The virtual environment can be activated with:
-
-```shell
-poetry shell
+uv sync
 ```
 
 Supported accelerators:
